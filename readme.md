@@ -1,45 +1,67 @@
 # HAZOP Analysis Tool
 
+A Streamlit-based application for conducting HAZOP (Hazard and Operability) studies and LOPA (Layer of Protection Analysis) for process safety engineering.
+
 ## Overview
 The HAZOP (Hazard and Operability Study) Analysis Tool is a Streamlit-based web application designed to facilitate process safety analysis in chemical and process industries. This tool combines equipment assessment, scenario analysis, Layer of Protection Analysis (LOPA), and consequence modeling in a user-friendly interface.
 
 ## Features
-- Equipment data management and analysis
-- Scenario-based risk assessment
-- Layer of Protection Analysis (LOPA)
-- Flash and release calculations
-- Risk matrix visualization
-- Comprehensive reporting system
-- Data import/export capabilities
+
+- Chemical Database Management
+- Equipment Database Management 
+- HAZOP Scenario Identification (Coming Soon)
+- LOPA Worksheet (Coming Soon)
+- Report Generation (Coming Soon)
 
 ## Installation
 
-### Prerequisites
-- Python 3.8 or higher
-- pip package manager
+1. Clone this repository:
+   ```
+   git clone https://github.com/yourusername/hazop-analysis-tool.git
+   cd hazop-analysis-tool
+   ```
 
-### Setup
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/hazop-analysis-tool.git
-cd hazop-analysis-tool
-```
+2. Create a virtual environment (optional but recommended):
+   ```
+   python -m venv env
+   source env/bin/activate  # On Windows: env\Scripts\activate
+   ```
 
-2. Create and activate virtual environment:
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
+3. Install the required packages:
+   ```
+   pip install -r requirements.txt
+   ```
 
-# Linux/Mac
-python -m venv venv
-source venv/bin/activate
-```
+## Usage
 
-3. Install required packages:
-```bash
-pip install -r requirements.txt
-```
+1. Run the application:
+   ```
+   streamlit run app/app.py
+   ```
+
+2. Navigate to `http://localhost:8501` in your web browser.
+
+3. Use the sidebar navigation to switch between different tools:
+   - Home: Overview of the application
+   - Chemical Database: Manage chemical properties
+   - Equipment Database: Manage process equipment
+   - (More features coming soon)
+
+## Data Management
+
+- The application uses SQLite for data storage by default
+- Database files are stored in the `app/data` directory
+- Data can be imported/exported from Excel or CSV files
+
+## Requirements
+
+- Python 3.8 or newer
+- Streamlit 1.22.0 or newer
+- See requirements.txt for complete list of dependencies
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Implementation Plan
 
