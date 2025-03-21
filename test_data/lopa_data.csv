@@ -1,0 +1,11 @@
+Scenario_ID,IPL_Type,IPL_Description,PFD,Status
+SCN-001,Basic Process Control,Pressure Control Loop,0.1,Active
+SCN-001,Alarm,High Pressure Alarm,0.1,Active
+SCN-001,Safety Instrumented System,Pressure Trip,0.01,Active
+SCN-002,Basic Process Control,Temperature Control,0.1,Active
+SCN-002,Alarm,High Temperature Alarm,0.1,Active
+SCN-002,Safety Instrumented System,Emergency Shutdown,0.01,Active
+SCN-003,Physical Protection,Secondary Containment,0.1,Active
+SCN-003,Alarm,Leak Detection,0.1,Active
+SCN-004,Basic Process Control,Level Control,0.1,Active
+SCN-004,Alarm,High Level Alarm,0.1,Active
