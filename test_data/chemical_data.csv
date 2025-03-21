@@ -1,0 +1,6 @@
+Chemical_ID,Chemical_Name,Flash_Point,Boiling_Point,Auto_Ignition_Temp,Lower_Explosive_Limit,Upper_Explosive_Limit,Molecular_Weight,Specific_Gravity
+CHEM-001,Methanol,-16,64.7,464,6.0,36.0,32.04,0.792
+CHEM-002,Ethylene Oxide,-20,10.4,429,2.6,100,44.05,0.887
+CHEM-003,Benzene,-11,80.1,498,1.2,7.8,78.11,0.876
+CHEM-004,Toluene,4.4,110.6,480,1.1,7.1,92.14,0.867
+CHEM-005,Acetone,-20,56.2,465,2.6,12.8,58.08,0.791

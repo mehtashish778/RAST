@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Save" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub New_Save_Workbook()
+    Dim strCode As String
+    Dim VBComp As VBComponent
+    Dim modObj As Object
+    On Error GoTo General_Error
+    &apos; Set object to the module you want to export.
+      Set modObj = Application.VBE.ActiveVBProject.VBComponents.Item(&quot;LOPA_Worksheet_Macros&quot;)
+    &apos; Place code in a string.
+      strCode = modObj.CodeModule.Lines(1, modObj.CodeModule.CountOfLines)
+    &apos; Create new workbook with only sheets to be exported
+      ThisWorkbook.Sheets(Array(&quot;Chemical Properties&quot;, &quot;Equipment Table&quot;, &quot;Scenario Results&quot;, _
+      &quot;LOPA Worksheet&quot;, &quot;IPL Credits&quot;)).Copy
+    &apos; Save name of new workbook
+      newbook = ActiveWorkbook.Name
+    &apos; Create a new module in workbook and rename it.
+      Set VBComp = Workbooks(newbook).VBProject.VBComponents.Add(vbext_ct_StdModule)
+      VBComp.Name = &quot;LOPA_Worksheet_Macros&quot;
+    &apos; Add code to new module from string variable.
+      VBComp.CodeModule.AddFromString (strCode)
+    Workbooks(newbook).Worksheets(&quot;Chemical Properties&quot;).Activate
+    Workbooks(newbook).Worksheets(&quot;Chemical Properties&quot;).Unprotect
+    Workbooks(newbook).Worksheets(&quot;Chemical Properties&quot;).Shapes(&quot;Delete_User_Chemicals&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Chemical Properties&quot;).Protect AllowFiltering:=True
+    Workbooks(newbook).Worksheets(&quot;Equipment Table&quot;).Activate
+    Workbooks(newbook).Worksheets(&quot;Equipment Table&quot;).Shapes(&quot;Import_Data_from_File&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Equipment Table&quot;).Shapes(&quot;Load_Selected_Equipment&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Equipment Table&quot;).Shapes(&quot;Calculate_All&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Equipment Table&quot;).Shapes(&quot;Clear_Equipment_Table&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Equipment Table&quot;).Shapes(&quot;Clear_All&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Equipment Table&quot;).Shapes(&quot;Go_To_Results&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Equipment Table&quot;).Shapes(&quot;Go_To_Input&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Scenario Results&quot;).Activate
+    Workbooks(newbook).Worksheets(&quot;Scenario Results&quot;).Shapes(&quot;&lt;&lt;_To_Input&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Scenario Results&quot;).Shapes(&quot;Sort&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Scenario Results&quot;).Shapes(&quot;Create_User_Scenario&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Scenario Results&quot;).Shapes(&quot;Save_All&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Scenario Results&quot;).Shapes(&quot;Clear_Results&quot;).Delete
+    Workbooks(newbook).Worksheets(&quot;Scenario Results&quot;).Shapes(&quot;LOPA_Worksheet_&gt;&quot;).OnAction = &quot;&apos;&quot; &amp; newbook &amp; &quot;&apos;!&quot; &amp; &quot;Generate_LOPA&quot;
+    Workbooks(newbook).Worksheets(&quot;LOPA Worksheet&quot;).Shapes(&quot;&lt;_Back_to_Results&quot;).OnAction = &quot;&apos;&quot; &amp; newbook &amp; &quot;&apos;!&quot; &amp; &quot;Write_LOPA_Back&quot;
+    Exit Sub
+  
+General_Error:
+  MsgBox &quot;Exporting requires one of your Excel macro security settings to be changed.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;               Go to Tools &gt; Macro &gt; Security... &gt; Trusted Publishers&quot; &amp; Chr(13) &amp; &quot;                      and check &quot;&quot;Trust access to Visual Basic Project&quot;&quot;&quot;
+End Sub
+Sub Save_Equipment()
+10    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+20    Set etw = ThisWorkbook.Worksheets(&quot;Equipment Table&quot;)
+30    Set cdw = ThisWorkbook.Worksheets(&quot;Chemical Data&quot;)
+40    If macrorunning = False Then
+50        Application.ScreenUpdating = False
+60        Application.Calculation = xlCalculationManual
+70        If mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+80            MsgBox &quot;No equipment tag entered.  Data not saved to equipment table.&quot;
+90            mmw.Activate
+100           Range(&quot;Equipment_Tag&quot;).Activate
+110           GoTo finish
+120       End If
+130   End If
+140   R = etw.Range(&quot;Equipment_Table_Headings&quot;).Row + 1
+150   Do While Not etw.Cells(R, etw.Range(&quot;T_Equipment_Tag&quot;).Column) = &quot;&quot;
+160       If etw.Cells(R, etw.Range(&quot;T_Equipment_Tag&quot;).Column).Value = mmw.Range(&quot;Equipment_Tag&quot;).Value Then
+170           If macrorunning = False Then
+180               If MsgBox(prompt:=&quot;Data already exists for this equipment tag in table.&quot; &amp; Chr(13) &amp; &quot;Are you sure you want to overwrite inputs?&quot; &amp; Chr(13) &amp; &quot;Click OK to overwrite data.&quot;, Buttons:=vbOKCancel, Title:=&quot;Warning&quot;) = vbOK Then
+190                   GoTo OK_to_continue
+200               Else
+210                   GoTo finish
+220               End If
+230           Else
+240               GoTo OK_to_continue
+250           End If
+260       End If
+270       R = R + 1
+280   Loop
+
+OK_to_continue:
+290   etw.Cells(R, etw.Range(&quot;P_Fract_Key_Chemical&quot;).Column).Value = cdw.Range(&quot;Fract_Key_Chemical&quot;).Value
+300   For Each input_name In ThisWorkbook.Names
+310       If Not input_name.Name = &quot;T_Save_Date&quot; And Not input_name.Name = &quot;R_Trigger&quot; And Not input_name.Name = &quot;&apos;Equipment Table&apos;!Print_Titles&quot; And Not input_name.Name = &quot;&apos;Equipment Table&apos;!_FilterDatabase&quot; And Not input_name.Name = &quot;Equipment_Table_Headings&quot; And InStr(1, input_name.RefersTo, &quot;&apos;Equipment Table&apos;!&quot;, vbTextCompare) &gt; 0 Then
+320           If Left(input_name.Name, 2) = &quot;T_&quot; Then
+330               etw.Cells(R, Range(input_name.Name).Column).Value = Range(Right(input_name.Name, Len(input_name.Name) - 2)).Value
+340           ElseIf Left(input_name.Name, 2) = &quot;R_&quot; Then
+350               If IsNumeric(Range(Right(input_name.Name, Len(input_name.Name) - 2)).Value) Then
+360                   etw.Cells(R, Range(input_name.Name).Column).Value = Round(Range(Right(input_name.Name, Len(input_name.Name) - 2)).Value, 0)
+370               Else
+380                   etw.Cells(R, Range(input_name.Name).Column).Value = Range(Right(input_name.Name, Len(input_name.Name) - 2)).Value
+390               End If
+400           ElseIf Left(input_name.Name, 2) = &quot;P_&quot; And Not input_name.Name = &quot;P_Fract_Key_Chemical&quot; Then
+410               etw.Cells(R, Range(input_name.Name).Column).Value = Range(Right(input_name.Name, Len(input_name.Name) - 2) &amp; &quot;_U&quot;).Value
+420           End If
+430           etw.Cells(R, Range(input_name.Name).Column).WrapText = False
+440       End If
+450   Next input_name
+460   Trigger = vbNullString
+470   If IsNumeric(Range(&quot;CEI&quot;).Value) = True Then
+480       If Range(&quot;CEI&quot;).Value &gt; 199 Then
+490           Trigger = &quot;CEI&quot;
+500           etw.Cells(R, Range(&quot;R_CEI&quot;).Column).Interior.ColorIndex = 40
+510           etw.Cells(R, Range(&quot;R_CEI&quot;).Column).Font.Bold = True
+520       Else
+530           etw.Cells(R, Range(&quot;R_CEI&quot;).Column).Interior.ColorIndex = xlNone
+540           etw.Cells(R, Range(&quot;R_CEI&quot;).Column).Font.Bold = False
+550       End If
+560   Else
+570       etw.Cells(R, Range(&quot;R_CEI&quot;).Column).Interior.ColorIndex = xlNone
+580       etw.Cells(R, Range(&quot;R_CEI&quot;).Column).Font.Bold = False
+590   End If
+600   If IsNumeric(Range(&quot;CEI_HD2&quot;).Value) = True And IsNumeric(Range(&quot;Public_Input&quot;).Value) Then
+610       If Range(&quot;CEI_HD2&quot;).Value &gt; Range(&quot;Public_Input&quot;).Value Then
+620           If Trigger = &quot;&quot; Then
+630               Trigger = &quot;HD2&quot;
+640           Else
+650               Trigger = Trigger &amp; &quot;, HD2&quot;
+660           End If
+670           etw.Cells(R, Range(&quot;R_CEI_HD2&quot;).Column).Interior.ColorIndex = 40
+680           etw.Cells(R, Range(&quot;R_CEI_HD2&quot;).Column).Font.Bold = True
+690       Else
+700           etw.Cells(R, Range(&quot;R_CEI_HD2&quot;).Column).Interior.ColorIndex = xlNone
+710           etw.Cells(R, Range(&quot;R_CEI_HD2&quot;).Column).Font.Bold = False
+720       End If
+730   Else
+740       etw.Cells(R, Range(&quot;R_CEI_HD2&quot;).Column).Interior.ColorIndex = xlNone
+750       etw.Cells(R, Range(&quot;R_CEI_HD2&quot;).Column).Font.Bold = False
+760   End If
+761   etw.Cells(R, Range(&quot;R_CEI_HD3&quot;).Column).Interior.ColorIndex = xlNone
+762   etw.Cells(R, Range(&quot;R_CEI_HD3&quot;).Column).Font.Bold = False
+770   If IsNumeric(Range(&quot;FEI&quot;).Value) = True Then
+780       If Range(&quot;FEI&quot;).Value &gt; 127 Then
+790           If Trigger = &quot;&quot; Then
+800               Trigger = &quot;FEI&quot;
+810           Else
+820               Trigger = Trigger &amp; &quot;, FEI&quot;
+830           End If
+840           etw.Cells(R, Range(&quot;R_FEI&quot;).Column).Interior.ColorIndex = 40
+850           etw.Cells(R, Range(&quot;R_FEI&quot;).Column).Font.Bold = True
+860       Else
+870           etw.Cells(R, Range(&quot;R_FEI&quot;).Column).Interior.ColorIndex = xlNone
+880           etw.Cells(R, Range(&quot;R_FEI&quot;).Column).Font.Bold = False
+890       End If
+900   Else
+910       etw.Cells(R, Range(&quot;R_FEI&quot;).Column).Interior.ColorIndex = xlNone
+920       etw.Cells(R, Range(&quot;R_FEI&quot;).Column).Font.Bold = False
+930   End If
+940   If IsNumeric(Range(&quot;ROE&quot;).Value) And IsNumeric(Range(&quot;Occ_Bldg_Input&quot;).Value) Then
+950       If Range(&quot;ROE&quot;).Value &gt; Range(&quot;Occ_Bldg_Input&quot;).Value Then
+960           If Trigger = &quot;&quot; Then
+970               Trigger = &quot;ROE&quot;
+980           Else
+990               Trigger = Trigger &amp; &quot;, ROE&quot;
+1000          End If
+1010          etw.Cells(R, Range(&quot;R_ROE&quot;).Column).Interior.ColorIndex = 40
+1020          etw.Cells(R, Range(&quot;R_ROE&quot;).Column).Font.Bold = True
+1030      Else
+1040          etw.Cells(R, Range(&quot;R_ROE&quot;).Column).Interior.ColorIndex = xlNone
+1050          etw.Cells(R, Range(&quot;R_ROE&quot;).Column).Font.Bold = False
+1060      End If
+1070  Else
+1080      etw.Cells(R, Range(&quot;R_ROE&quot;).Column).Interior.ColorIndex = xlNone
+1090      etw.Cells(R, Range(&quot;R_ROE&quot;).Column).Font.Bold = False
+1100  End If
+1110  etw.Cells(R, Range(&quot;R_Trigger&quot;).Column).Value = Trigger
+1115  etw.Cells(R, Range(&quot;T_Save_Date&quot;).Column).Value = Now
+1120  If macrorunning = False Then
+1130      On Error Resume Next
+1140      R = Application.WorksheetFunction.CountA(etw.Columns(etw.Range(&quot;T_Equipment_Tag&quot;).Column))
+1150      c = etw.Range(&quot;Equipment_Table_Headings&quot;).Columns(etw.Range(&quot;Equipment_Table_Headings&quot;).Columns.Count).Column
+1160      If R &gt; etw.Range(&quot;Equipment_Table_Headings&quot;).Row Then
+1170          With etw.Range(etw.Range(&quot;Equipment_Table_Headings&quot;), etw.Cells(R, c))
+1180              .Borders(xlEdgeLeft).LineStyle = xlContinuous
+1190              .Borders(xlEdgeTop).LineStyle = xlContinuous
+1200              .Borders(xlEdgeBottom).LineStyle = xlContinuous
+1210              .Borders(xlEdgeRight).LineStyle = xlContinuous
+1220              .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+1230              .Borders(xlInsideVertical).LineStyle = xlContinuous
+1240              .Borders(xlEdgeLeft).Weight = xlThin
+1250              .Borders(xlEdgeTop).Weight = xlThin
+1260              .Borders(xlEdgeBottom).Weight = xlThin
+1270              .Borders(xlEdgeRight).Weight = xlThin
+1280              .Borders(xlInsideHorizontal).Weight = xlThin
+1290              .Borders(xlInsideVertical).Weight = xlThin
+1300          End With
+1310          With etw.Range(&quot;Equipment_Table_Headings&quot;)
+1320              .Borders(xlEdgeLeft).Weight = xlMedium
+1330              .Borders(xlEdgeTop).Weight = xlMedium
+1340              .Borders(xlEdgeBottom).Weight = xlMedium
+1350              .Borders(xlEdgeRight).Weight = xlMedium
+1360          End With
+1370      End If
+1380      etw.Range(&quot;Equipment_Table_Headings&quot;).Borders(xlEdgeBottom).Weight = xlMedium
+1390      On Error GoTo 0
+1400      etw.Activate
+1410      etw.Cells(R, 1).Activate
+1420  End If
+
+finish:
+1430  If macrorunning = False Then
+1435      If mmw.Range(&quot;Error_Count&quot;).Value = &quot;Input Data Sufficient to Proceed with Analysis&quot; Then
+1436          etw.Cells(R, etw.Range(&quot;T_Equipment_Tag&quot;).Column).Interior.ColorIndex = xlNone
+1437      End If
+1440      Application.Calculation = xlCalculationAutomatic
+1450      Application.ScreenUpdating = True
+1460  End If
+End Sub
+Sub Save_Chemical()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set cpw = ThisWorkbook.Worksheets(&quot;Chemical Properties&quot;)
+    Set ncw = ThisWorkbook.Worksheets(&quot;New Chemical&quot;)
+    cpw.Unprotect
+    newname = ncw.Range(&quot;New_Chemical&quot;).Value
+5   If newname = &quot;&quot; Then
+        MsgBox (&quot;Enter name for new chemical.&quot;)
+        ncw.Range(&quot;New_Chemical&quot;).Select
+        GoTo 10
+    End If
+    If cpw.Range(cpw.Cells(cpw.Range(&quot;Chemical_C&quot;).Row + 1, 1), cpw.Cells(cpw.UsedRange.Rows.Count, 1)).Find(What:=newname, lookat:=xlWhole) Is Nothing Then
+        Worksheets(&quot;Chemical Properties&quot;).Range(&quot;a3&quot;).EntireRow.Insert
+        R = 3
+    Else
+        R = cpw.Range(cpw.Cells(cpw.Range(&quot;Chemical_C&quot;).Row + 1, 1), cpw.Cells(cpw.UsedRange.Rows.Count, 1)).Find(What:=newname, lookat:=xlWhole).Row
+        If cpw.Cells(R, cpw.Range(&quot;Prop_Source_C&quot;).Column) = &quot;User&quot; Then
+            If MsgBox(&quot;Chemical data in physical property table for this user defined chemical will be overwritten with data on this worksheet.  Are you sure you want to continue?&quot;, vbYesNo) = vbNo Then
+                GoTo 10
+            End If
+        Else
+            MsgBox (&quot;Chemical is already built into the tool.  Modify name to save data as a user defined chemical.&quot;)
+            ncw.Range(&quot;New_Chemical&quot;).Select
+            GoTo 10
+        End If
+    End If
+
+    With Worksheets(&quot;Chemical Properties&quot;)
+        .Cells(R, Range(&quot;Chemical_C&quot;).Column).Value = newname
+        .Cells(R, Range(&quot;Cas_No_C&quot;).Column).Value = Range(&quot;Cas_No_N&quot;).Value
+        .Cells(R, Range(&quot;Chem_Reference_C&quot;).Column).Value = Range(&quot;Chem_Reference&quot;).Value
+        .Cells(R, Range(&quot;Prop_Source_C&quot;).Column).Value = &quot;User&quot;
+        .Cells(R, Range(&quot;Frac_Key_C&quot;).Column).Value = 1
+        .Cells(R, Range(&quot;Mw_C&quot;).Column).Value = Range(&quot;MW_N&quot;).Value
+        .Cells(R, Range(&quot;ERPG1_C&quot;).Column).Value = Range(&quot;ERPG_1_N&quot;).Value
+        .Cells(R, Range(&quot;ERPG2_C&quot;).Column).Value = Range(&quot;ERPG_2_N&quot;).Value
+        .Cells(R, Range(&quot;ERPG3_C&quot;).Column).Value = Range(&quot;ERPG_3_N&quot;).Value
+        .Cells(R, Range(&quot;BP_C&quot;).Column).Value = Range(&quot;TB_N&quot;).Value
+        .Cells(R, Range(&quot;MP_C&quot;).Column).Value = Range(&quot;TM_N&quot;).Value
+        .Cells(R, Range(&quot;Dust_Class_C&quot;).Column).Value = Range(&quot;Dust_Class_N&quot;).Value
+        .Cells(R, Range(&quot;Dust_Size_C&quot;).Column).Value = Range(&quot;Dust_Size_N&quot;).Value
+        .Cells(R, Range(&quot;Fraction_Dust_C&quot;).Column).Value = Range(&quot;Fraction_Dust_N&quot;).Value
+        .Cells(R, Range(&quot;Dust_MIE_C&quot;).Column).Value = Range(&quot;Dust_MIE_N&quot;).Value
+        .Cells(R, Range(&quot;Dust_Hybrid_C&quot;).Column).Value = Range(&quot;Dust_Hybrid_N&quot;).Value
+        .Cells(R, Range(&quot;FP_C&quot;).Column).Value = Range(&quot;Flash_Pt_N&quot;).Value
+        .Cells(R, Range(&quot;LFL_C&quot;).Column).Value = Range(&quot;LFL_N&quot;).Value
+        .Cells(R, Range(&quot;UFL_C&quot;).Column).Value = Range(&quot;UFL_N&quot;).Value
+        .Cells(R, Range(&quot;AIgnite_C&quot;).Column).Value = Range(&quot;AIgnite_N&quot;).Value
+        .Cells(R, Range(&quot;NH_C&quot;).Column).Value = Range(&quot;NFPA_H_N&quot;).Value
+        .Cells(R, Range(&quot;NF_C&quot;).Column).Value = Range(&quot;NFPA_F_N&quot;).Value
+        .Cells(R, Range(&quot;NR_C&quot;).Column).Value = Range(&quot;NFPA_R_N&quot;).Value
+        .Cells(R, Range(&quot;EI_C&quot;).Column).Value = Range(&quot;Ease_of_Ignition_N&quot;).Value
+        .Cells(R, Range(&quot;FS_C&quot;).Column).Value = Range(&quot;Flame_Speed_N&quot;).Value
+        .Cells(R, Range(&quot;DTRS_C&quot;).Column).Value = Range(&quot;Dermal_Tox_N&quot;).Value
+        .Cells(R, Range(&quot;ATRS_C&quot;).Column).Value = Range(&quot;Aquatic_Tox_N&quot;).Value
+        .Cells(R, Range(&quot;RRS_C&quot;).Column).Value = Range(&quot;Reactive_Risk_N&quot;).Value
+        .Cells(R, Range(&quot;Conductive_C&quot;).Column).Value = Range(&quot;Conductive_N&quot;).Value
+        .Cells(R, Range(&quot;LD_A_C&quot;).Column).Value = Range(&quot;Dens_A_N&quot;).Value
+        .Cells(R, Range(&quot;LD_B_C&quot;).Column).Value = Range(&quot;Dens_B_N&quot;).Value
+        .Cells(R, Range(&quot;LCP_A_C&quot;).Column).Value = Range(&quot;Liq_C_A_N&quot;).Value
+        .Cells(R, Range(&quot;LCP_B_C&quot;).Column).Value = Range(&quot;Liq_C_B_N&quot;).Value
+        .Cells(R, Range(&quot;HV_A_C&quot;).Column).Value = Range(&quot;Lat_Ht_A_N&quot;).Value
+        .Cells(R, Range(&quot;HV_B_C&quot;).Column).Value = Range(&quot;Lat_Ht_B_N&quot;).Value
+        .Cells(R, Range(&quot;HV_C_C&quot;).Column).Value = Range(&quot;Lat_Ht_C_N&quot;).Value
+        .Cells(R, Range(&quot;VP_A_C&quot;).Column).Value = Range(&quot;Vap_Pres_A_N&quot;).Value
+        .Cells(R, Range(&quot;VP_B_C&quot;).Column).Value = Range(&quot;Vap_Pres_B_N&quot;).Value
+        .Cells(R, Range(&quot;VP_C_C&quot;).Column).Value = Range(&quot;Vap_Pres_C_N&quot;).Value
+    End With
+    Worksheets(&quot;Chemical Properties&quot;).Activate
+    Range(&quot;Chem_Table&quot;).Offset(1, 0).Sort key1:=Range(&quot;a2&quot;), Order1:=xlAscending, Header:=xlNo
+    Worksheets(&quot;New Chemical&quot;).Activate
+    Range(&quot;Starting_Chemical&quot;).Value = newname
+    Range(&quot;New_Chemical&quot;).ClearContents
+    Range(&quot;User_Properties&quot;).ClearContents
+    Range(&quot;User_PhysProps&quot;).ClearContents
+    MsgBox (&quot;NOTE: Data on Reaction Input sheet must be saved separately.&quot;)
+10  Worksheets(&quot;Chemical Properties&quot;).Protect AllowFiltering:=True
+50  Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+
+Sub Save_Reactive_Data_to_Chemical_Table()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set cpw = ThisWorkbook.Worksheets(&quot;Chemical Properties&quot;)
+    Set cdw = ThisWorkbook.Worksheets(&quot;Chemical Data&quot;)
+    Set riw = ThisWorkbook.Worksheets(&quot;Reaction Input&quot;)
+    cpw.Unprotect
+    If cdw.Range(&quot;Chemical&quot;).Value = &quot;New Chemical&quot; Then
+5       MsgBox (&quot;Go to Chemical Data sheet and save chemical data for new chemical prior to saving reactive data.&quot;)
+    Else
+        R = cpw.Range(cpw.Cells(cpw.Range(&quot;Chemical_C&quot;).Row + 1, 1), cpw.Cells(cpw.UsedRange.Rows.Count, 1)).Find(What:=cdw.Range(&quot;Chemical&quot;).Value, lookat:=xlWhole).Row
+        If cpw.Cells(R, cpw.Range(&quot;Prop_Source_C&quot;).Column) = &quot;User&quot; Then
+            If MsgBox(&quot;Reaction data in physical property table for this user defined chemical will be overwritten with data on this worksheet.  Are you sure you want to continue?&quot;, vbOKCancel) = vbCancel Then
+                GoTo 10
+            Else
+                MsgBox (&quot;NOTE: For equipment with this chemical, user must update physical property data stored in Equipment Table manually.&quot;)
+            End If
+        Else
+            MsgBox (&quot;Go to Chemical Data sheet and save chemical data for user chemical prior to saving reactive data.&quot;)
+            GoTo 10
+        End If
+        newname = Range(&quot;Chemical&quot;).Value
+        R = cpw.Range(cpw.Cells(cpw.Range(&quot;Chemical_C&quot;).Row + 1, 1), cpw.Cells(cpw.UsedRange.Rows.Count, 1)).Find(What:=Range(&quot;Chemical&quot;).Value).Row
+    End If
+    With Worksheets(&quot;Chemical Properties&quot;)
+        .Cells(R, Range(&quot;Chemical_C&quot;).Column).Value = newname
+        .Cells(R, Range(&quot;Prop_Source_C&quot;).Column).Value = &quot;User&quot;
+        .Cells(R, Range(&quot;Rx_Data_Reference_C&quot;).Column).Value = riw.Range(&quot;Rx_Data_Reference&quot;).Value
+        .Cells(R, Range(&quot;DHR_C&quot;).Column).Value = riw.Range(&quot;DHR&quot;).Value
+        .Cells(R, Range(&quot;Act_Energy_C&quot;).Column).Value = riw.Range(&quot;Act_Energy&quot;).Value
+        .Cells(R, Range(&quot;Tdet_C&quot;).Column).Value = riw.Range(&quot;Tdet&quot;).Value
+        .Cells(R, Range(&quot;Rdet_C&quot;).Column).Value = riw.Range(&quot;Rdet&quot;).Value
+        .Cells(R, Range(&quot;Gas_Gen_C&quot;).Column).Value = riw.Range(&quot;Gas_Gen&quot;).Value
+        .Cells(R, Range(&quot;Gas_Exo_C&quot;).Column).Value = riw.Range(&quot;Gas_Exo&quot;).Value
+        .Cells(R, Range(&quot;Monomer_C&quot;).Column).Value = riw.Range(&quot;Monomer&quot;).Value
+        .Cells(R, Range(&quot;phi_C&quot;).Column).Value = riw.Range(&quot;phi&quot;).Value
+        .Cells(R, Range(&quot;Test_Method_C&quot;).Column).Value = riw.Range(&quot;Test_Method&quot;).Value
+    End With
+    Worksheets(&quot;Chemical Properties&quot;).Activate
+    Range(&quot;Chem_Table&quot;).Offset(2, 0).Sort key1:=Range(&quot;a3&quot;), Order1:=xlAscending, Header:=xlNo
+    Worksheets(&quot;Chemical Data&quot;).Activate
+    Range(&quot;Chemical&quot;).Value = newname
+    Worksheets(&quot;Reaction Input&quot;).Activate
+    Range(&quot;Rx_Data_Reference_U&quot;).Value = &quot;&quot;
+    Range(&quot;Reactivity_Data_U&quot;).ClearContents
+    MsgBox (&quot;NOTE: Data on Chemical Data sheet must be saved separately.&quot;)
+10  Worksheets(&quot;Chemical Properties&quot;).Protect AllowFiltering:=True
+50  Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+
+
+
+
+
+
+</script:module>

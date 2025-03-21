@@ -1,0 +1,1605 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="LOPA_Worksheet_Macros" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub ShowHide_Quality_Criteria()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set lmw = ThisWorkbook.Worksheets(&quot;LOPA Menu&quot;)
+    lmw.Unprotect
+    If lmw.Columns(&quot;AC&quot;).Hidden = True Then
+        lmw.Columns(&quot;AA:AD&quot;).Hidden = False
+        lmw.Shapes.Range(Array(&quot;Custom_Quality&quot;)).Select
+        Selection.Characters.Text = &quot;&lt; Customize Quality Check&quot;
+        lmw.Range(&quot;QC_1&quot;).Select
+        Else
+        lmw.Columns(&quot;AA:AD&quot;).Hidden = True
+        lmw.Shapes.Range(Array(&quot;Custom_Quality&quot;)).Select
+        Selection.Characters.Text = &quot;Customize Quality Check &gt;&quot;
+        lmw.Range(&quot;Exclude_MI&quot;).Select
+    End If
+    lmw.Protect
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+End Sub
+&apos;  Author: Kevin Hersey
+&apos;  Last Revised: August 4, 2015
+&apos;  Last Revised By: Kevin Hersey
+&apos;
+Sub Write_to_SRS()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    
+    &apos; Get ID of SIF to be exported.
+    sis_to_export = InputBox(&quot;Enter SIF ID to export.&quot;)
+    If sis_to_export = &quot;&quot; Then
+        Application.ScreenUpdating = True
+        Application.Calculation = xlCalculationAutomatic
+        Exit Sub
+    End If
+    
+    &apos; Clear filters
+    filt = srw.AutoFilter.Range.Address
+    srw.Range(filt).AutoFilter
+    srw.Range(filt).AutoFilter
+    
+    &apos; Filter for scenarios with instrument credit taken, not eliminated, and analyzed via LOPA
+    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column, Criteria1:=&quot;&gt;0&quot;
+    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Compare&quot;).Column, Criteria1:=&quot;&lt;&gt;Eliminated&quot;
+    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Credible&quot;).Column, Criteria1:=&quot;Yes&quot;
+    
+    no_DowGEP_scenarios = Application.WorksheetFunction.Subtotal(3, srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - 2
+    
+    &apos; check if SIFA contains SIF ID entered.
+    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_SIFA&quot;).Column, Criteria1:=sis_to_export
+    
+    no_SIFA_scenarios = Application.WorksheetFunction.Subtotal(3, srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - 2
+    
+    If no_SIFA_scenarios = no_DowGEP_scenarios Then
+        no_SIFA_scenarios = 0
+    End If
+    
+    &apos; Clear filters
+    filt = srw.AutoFilter.Range.Address
+    srw.Range(filt).AutoFilter
+    srw.Range(filt).AutoFilter
+    
+    &apos; Filter for scenarios with instrument credit taken, not eliminated, and analyzed via LOPA
+    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column, Criteria1:=&quot;&gt;0&quot;
+    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Compare&quot;).Column, Criteria1:=&quot;&lt;&gt;Eliminated&quot;
+    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Credible&quot;).Column, Criteria1:=&quot;Yes&quot;
+        
+    &apos; check if SIFB contains SIF ID entered.
+    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_SIFB&quot;).Column, Criteria1:=sis_to_export
+    
+    no_SIFB_scenarios = Application.WorksheetFunction.Subtotal(3, srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - 2
+    
+    If no_SIFB_scenarios = no_DowGEP_scenarios Then
+        no_SIFB_scenarios = 0
+    End If
+    
+    no_SIF_scenarios = no_SIFA_scenarios + no_SIFB_scenarios
+    
+    If no_SIF_scenarios = 0 Then
+        MsgBox (&quot;No scenarios found with SIF ID of &quot; &amp; sis_to_export &amp; Chr(10) &amp; &quot;Check that SIF ID is entered in at least one scenario, instrument credits are taken, analyze via LOPA is &quot;&quot;Yes&quot;&quot;, and scenario is not eliminated.&quot;)
+        filt = srw.AutoFilter.Range.Address
+        srw.Range(filt).AutoFilter
+        srw.Range(filt).AutoFilter
+        Application.ScreenUpdating = True
+        Application.Calculation = xlCalculationAutomatic
+        Exit Sub
+    End If
+    
+    If no_SIF_scenarios &gt; 10 Then
+        If MsgBox(&quot;The number of scenarios to be transferred will be &quot; &amp; no_SIF_scenarios &amp; Chr(10) &amp; &quot;Are you sure you want to proceed?&quot;, vbYesNo, &quot;WARNING&quot;) = vbNo Then
+            Application.ScreenUpdating = True
+            Application.Calculation = xlCalculationAutomatic
+            Exit Sub
+        End If
+    End If
+      
+    filetoopen = Application.GetOpenFilename(Title:=&quot;Select SRS Spreadsheet to Transfer Data Into&quot;, MultiSelect:=False)
+    If filetoopen &lt;&gt; False Then
+    
+        On Error GoTo Open_Error
+        Application.EnableEvents = False
+        Workbooks.Open Filename:=filetoopen, UpdateLinks:=0
+        On Error GoTo 0
+        
+        SRS = ActiveWorkbook.Name
+        On Error GoTo Sheet_Error
+        Set srsw = Workbooks(SRS).Worksheets(&quot;SRS and Approvals&quot;)
+        On Error GoTo 0
+        
+        MART_error = 0
+        R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+        Total = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - 2
+        For x = 1 To Total
+            Skip = False
+            If srw.Cells(R, srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column).Value &gt; 0 And Not srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Eliminated&quot; And UCase(Trim(srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column).Value)) = &quot;YES&quot; Then &apos; if-2
+                &apos; Check if SIF is in SIFA column
+                If srw.Cells(R, srw.Range(&quot;Out_SIFA&quot;).Column).Value = sis_to_export Then
+                    SIL_RAST = srw.Cells(R, srw.Range(&quot;Out_IPL_3&quot;).Column).Value
+                    SIF_desc = srw.Cells(R, srw.Range(&quot;Out_IPL3_Detail&quot;).Column).Value
+                    MART = srw.Cells(R, srw.Range(&quot;Out_IPL3_DelayTime&quot;).Column).Value
+                    Set delaytimecell = srw.Cells(R, srw.Range(&quot;Out_IPL3_DelayTime&quot;).Column)
+                    MALR = srw.Cells(R, srw.Range(&quot;Out_IPL3_Other&quot;).Column).Value
+                    SetPoint = srw.Cells(R, srw.Range(&quot;Out_IPL3_SetPoint&quot;).Column).Value
+                ElseIf srw.Cells(R, srw.Range(&quot;Out_SIFB&quot;).Column).Value = sis_to_export Then
+                    SIL_RAST = srw.Cells(R, srw.Range(&quot;Out_IPL_4&quot;).Column).Value
+                    SIF_desc = srw.Cells(R, srw.Range(&quot;Out_IPL3_Detail&quot;).Column).Value
+                    MART = srw.Cells(R, srw.Range(&quot;Out_IPL4_DelayTime&quot;).Column).Value
+                    Set delaytimecell = srw.Cells(R, srw.Range(&quot;Out_IPL4_DelayTime&quot;).Column)
+                    MALR = srw.Cells(R, srw.Range(&quot;Out_IPL4_Other&quot;).Column).Value
+                    SetPoint = srw.Cells(R, srw.Range(&quot;Out_IPL4_SetPoint&quot;).Column).Value
+                Else
+                    Skip = True
+                End If
+                If Skip = False Then
+                    If no_SIF_scenarios = 1 Then
+                        scenario_no = &quot;&quot;
+                        Else
+                        scenario_no = srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value &amp; &quot;: &quot;
+                    End If
+                    &apos; Enter SIL rating of SIS loop
+                    srsw.Range(&quot;SIF_num&quot;).Value = sis_to_export
+                    If srsw.Range(&quot;SIL&quot;).Value = &quot;&quot; Then
+                        srsw.Range(&quot;SIL&quot;).Value = &quot;SIL-&quot; &amp; SIL_RAST
+                        Else
+                        SIL_SRS = Right(srsw.Range(&quot;SIL&quot;).Value, 1)
+                        If SIL_SRS = &quot;+&quot; Then
+                            srsw.Range(&quot;SIL&quot;).Value = &quot;SIL-&quot; &amp; SIL_RAST
+                            Else
+                            If SIL_RAST &gt; Int(SIL_SRS) Then
+                                srsw.Range(&quot;SIL&quot;).Value = &quot;SIL-&quot; &amp; SIL_RAST
+                            End If
+                        End If
+                    End If
+                    srsw.Range(&quot;SIF_desc&quot;).Value = SIF_desc
+                    
+                    &apos; Enter Scenario number
+                    If srsw.Range(&quot;LOPA_ref&quot;).Value = &quot;&quot; Then
+                        srsw.Range(&quot;LOPA_ref&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value
+                        Else
+                        srsw.Range(&quot;LOPA_ref&quot;).Value = srsw.Range(&quot;LOPA_ref&quot;).Value &amp; &quot;, &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value
+                    End If
+                    
+                    &apos; Enter Maximum Allowable Response Time (MART)
+                    If UCase(MART) = &quot;N/A&quot; Then
+                        If srsw.Range(&quot;dLRT&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;dLRT&quot;).Value = &quot;n/a&quot;
+                        End If
+                        Else
+                        space_position = InStr(1, MART, &quot; &quot;, vbTextCompare)
+                        If space_position &gt; 0 Then
+                            MART_value = Left(MART, Len(MART) - space_position - 1)
+                            MART_units = Right(MART, Len(MART) - space_position)
+                            Select Case UCase(MART_units)
+                                Case &quot;SEC&quot;, &quot;SECONDS&quot;, &quot;SECS&quot;, &quot;SECOND&quot;
+                                    MART_value = MART_value
+                                Case &quot;MIN&quot;, &quot;MINS&quot;, &quot;MINUTES&quot;, &quot;MINUTE&quot;
+                                    MART_value = MART_value * 60
+                                Case &quot;HRS&quot;, &quot;HOURS&quot;, &quot;HR&quot;, &quot;HOUR&quot;
+                                    MART_value = MART_value * 60 * 60
+                                Case Else
+                                    delaytimecell.Interior.ColorIndex = 3
+                                    MART_error = MART_error + 1
+                            End Select
+                            dLRT_value = srsw.Range(&quot;dLRT&quot;).Value
+                            dLRT_units = srsw.Range(&quot;dLRT_units&quot;).Value
+                            If dLRT_value = &quot;&quot; Or dLRT_units = &quot;&quot; Or UCase(dLRT_value) = &quot;N/A&quot; Then
+                                srsw.Range(&quot;dLRT&quot;).Value = MART_value
+                                srsw.Range(&quot;dLRT_units&quot;).Value = &quot;Seconds&quot;
+                                Else
+                                Select Case UCase(dLRT_units)
+                                    Case &quot;SECONDS&quot;
+                                        dLRT_value = dLRT_value
+                                    Case &quot;MINUTES&quot;
+                                        dLRT_value = dLRT_value * 60
+                                    Case &quot;HOURS&quot;
+                                        dLRT_value = dLRT_value * 60 * 60
+                                End Select
+                                If MART_value &lt; dLRT_value Then
+                                    srsw.Range(&quot;dLRT&quot;).Value = MART_value
+                                    srsw.Range(&quot;dLRT_units&quot;).Value = &quot;Seconds&quot;
+                                End If
+                            End If
+                        End If
+                    End If
+                    
+                    &apos; Enter Maximum Allowable Leak Rate (MALR)
+                    Leak_rate = srsw.Range(&quot;Leak_rate&quot;).Value
+                    If Leak_rate = &quot;&quot; Then
+                        srsw.Range(&quot;Leak_rate&quot;).Value = MALR
+                        Else
+                        If InStr(1, UCase(Leak_rate), UCase(MALR), vbTextCompare) = 0 Then
+                            srsw.Range(&quot;Leak_rate&quot;).Value = Leak_rate &amp; &quot;, &quot; &amp; MALR
+                        End If
+                    End If
+                    
+                    &apos; Enter set point of SIS loop
+                    Trip_SP1 = srsw.Range(&quot;Trip_SP1&quot;).Value
+                    If Trip_SP1 = &quot;&quot; Then
+                        srsw.Range(&quot;Trip_SP1&quot;).Value = SetPoint
+                        Else
+                        If InStr(1, Trip_SP1, SetPoint, vbTextCompare) = 0 Then
+                            srsw.Range(&quot;Trip_SP1&quot;).Value = Trip_SP1 &amp; &quot;, &quot; &amp; SetPoint
+                        End If
+                    End If
+                    
+                    &apos; Fill out Independent Layers of Protection (referenced by LOPA ID) table
+                    Out_Cause_Sensor = srw.Cells(R, srw.Range(&quot;Out_Cause_Sensor&quot;).Column).Value
+                    If Out_Cause_Sensor = &quot;&quot; Then
+                        If srsw.Range(&quot;IE_sensors&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;IE_sensors&quot;).Value = scenario_no &amp; &quot;n/a&quot;
+                            Else
+                            srsw.Range(&quot;IE_sensors&quot;).Value = srsw.Range(&quot;IE_sensors&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; &quot;n/a&quot;
+                        End If
+                        Else
+                        If srsw.Range(&quot;IE_sensors&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;IE_sensors&quot;).Value = scenario_no &amp; Out_Cause_Sensor
+                            Else
+                            srsw.Range(&quot;IE_sensors&quot;).Value = srsw.Range(&quot;IE_sensors&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; Out_Cause_Sensor
+                        End If
+                    End If
+                    
+                    Out_Cause_FinalElement = srw.Cells(R, srw.Range(&quot;Out_Cause_FinalElement&quot;).Column).Value
+                    If Out_Cause_FinalElement = &quot;&quot; Then
+                        If srsw.Range(&quot;IE_FCE&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;IE_FCE&quot;).Value = scenario_no &amp; &quot;n/a&quot;
+                            Else
+                            srsw.Range(&quot;IE_FCE&quot;).Value = srsw.Range(&quot;IE_sensors&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; &quot;n/a&quot;
+                        End If
+                        Else
+                        If srsw.Range(&quot;IE_FCE&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;IE_FCE&quot;).Value = scenario_no &amp; Out_Cause_FinalElement
+                            Else
+                            srsw.Range(&quot;IE_FCE&quot;).Value = srsw.Range(&quot;IE_FCE&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; Out_Cause_FinalElement
+                        End If
+                    End If
+                    
+                    Out_Cause_Desc = srw.Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Value
+                    If srsw.Range(&quot;IE_desc&quot;).Value = &quot;&quot; Then
+                        srsw.Range(&quot;IE_desc&quot;).Value = scenario_no &amp; Out_Cause_Desc
+                        Else
+                        srsw.Range(&quot;IE_desc&quot;).Value = srsw.Range(&quot;IE_desc&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; Out_Cause_Desc
+                    End If
+
+                    Out_IPL_1 = srw.Cells(R, srw.Range(&quot;Out_IPL_1&quot;).Column).Value
+                    If Out_IPL_1 &gt; 0 Then
+                        Out_IPL1_Sensor = srw.Cells(R, srw.Range(&quot;Out_IPL1_Sensor&quot;).Column).Value
+                        Out_IPL1_Sensor2 = srw.Cells(R, srw.Range(&quot;Out_IPL1_Sensor2&quot;).Column).Value
+                        If Out_IPL1_Sensor2 = &quot;&quot; Then
+                            BPCS_1_Sen = Out_IPL1_Sensor
+                            Else
+                            BPCS_1_Sen = Out_IPL1_Sensor &amp; &quot;, &quot; &amp; Out_IPL1_Sensor2
+                        End If
+                        If srsw.Range(&quot;BPCS_1_Sen&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;BPCS_1_Sen&quot;).Value = scenario_no &amp; BPCS_1_Sen
+                            Else
+                            srsw.Range(&quot;BPCS_1_Sen&quot;).Value = srsw.Range(&quot;BPCS_1_Sen&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; BPCS_1_Sen
+                        End If
+                        Out_IPL1_FinalElement = srw.Cells(R, srw.Range(&quot;Out_IPL1_FinalElement&quot;).Column).Value
+                        Out_IPL1_FinalElement2 = srw.Cells(R, srw.Range(&quot;Out_IPL1_FinalElement2&quot;).Column).Value
+                        If Out_IPL1_FinalElement2 = &quot;&quot; Then
+                            BPCS_1_FCE = Out_IPL1_FinalElement
+                            Else
+                            BPCS_1_FCE = Out_IPL1_FinalElement &amp; &quot;, &quot; &amp; Out_IPL1_FinalElement2
+                        End If
+                        If srsw.Range(&quot;BPCS_1_FCE&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;BPCS_1_FCE&quot;).Value = scenario_no &amp; BPCS_1_FCE
+                            Else
+                            srsw.Range(&quot;BPCS_1_FCE&quot;).Value = srsw.Range(&quot;BPCS_1_FCE&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; BPCS_1_FCE
+                        End If
+                        Out_IPL1_Detail = srw.Cells(R, srw.Range(&quot;Out_IPL1_Detail&quot;).Column).Value
+                        If srsw.Range(&quot;BPCS_1_desc&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;BPCS_1_desc&quot;).Value = scenario_no &amp; Out_IPL1_Detail
+                            Else
+                            srsw.Range(&quot;BPCS_1_desc&quot;).Value = srsw.Range(&quot;BPCS_1_desc&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; Out_IPL1_Detail
+                        End If
+                    End If
+                    
+                    Out_IPL_2 = srw.Cells(R, srw.Range(&quot;Out_IPL_2&quot;).Column).Value
+                    If Out_IPL_1 &gt; 0 Then
+                        Out_IPL2_Sensor = srw.Cells(R, srw.Range(&quot;Out_IPL2_Sensor&quot;).Column).Value
+                        Out_IPL2_Sensor2 = srw.Cells(R, srw.Range(&quot;Out_IPL2_Sensor2&quot;).Column).Value
+                        If Out_IPL1_Sensor2 = &quot;&quot; Then
+                            BPCS_2_Sen = Out_IPL2_Sensor
+                            Else
+                            BPCS_2_Sen = Out_IPL2_Sensor &amp; &quot;, &quot; &amp; Out_IPL2_Sensor2
+                        End If
+                        If srsw.Range(&quot;BPCS_2_Sen&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;BPCS_2_Sen&quot;).Value = scenario_no &amp; BPCS_2_Sen
+                            Else
+                            srsw.Range(&quot;BPCS_2_Sen&quot;).Value = srsw.Range(&quot;BPCS_2_Sen&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; BPCS_2_Sen
+                        End If
+                        Out_IPL2_FinalElement = srw.Cells(R, srw.Range(&quot;Out_IPL2_FinalElement&quot;).Column).Value
+                        BPCS_2_FCE = Out_IPL2_FinalElement
+                        If srsw.Range(&quot;BPCS_2_FCE&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;BPCS_2_FCE&quot;).Value = scenario_no &amp; BPCS_2_FCE
+                            Else
+                            srsw.Range(&quot;BPCS_2_FCE&quot;).Value = srsw.Range(&quot;BPCS_2_FCE&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; BPCS_2_FCE
+                        End If
+                        Out_IPL2_Detail = srw.Cells(R, srw.Range(&quot;Out_IPL2_Detail&quot;).Column).Value
+                        If srsw.Range(&quot;BPCS_2_desc&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;BPCS_2_desc&quot;).Value = scenario_no &amp; Out_IPL2_Detail
+                            Else
+                            srsw.Range(&quot;BPCS_2_desc&quot;).Value = srsw.Range(&quot;BPCS_2_desc&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; Out_IPL2_Detail
+                        End If
+                    End If
+                    
+                    Out_IPL_3 = srw.Cells(R, srw.Range(&quot;Out_IPL_3&quot;).Column).Value
+                    If Out_IPL_3 &gt; 0 Then
+                        Out_IPL3_Sensor = srw.Cells(R, srw.Range(&quot;Out_IPL3_Sensor&quot;).Column).Value
+                        Out_IPL3_Sensor2 = srw.Cells(R, srw.Range(&quot;Out_IPL3_Sensor2&quot;).Column).Value
+                        Out_IPL3_Sensor3 = srw.Cells(R, srw.Range(&quot;Out_IPL3_Sensor3&quot;).Column).Value
+                        If Out_IPL3_Sensor3 = &quot;&quot; Then
+                            If Out_IPL3_Sensor2 = &quot;&quot; Then
+                                SIF_A_sensors = Out_IPL3_Sensor
+                                Else
+                                SIF_A_sensors = Out_IPL3_Sensor &amp; &quot;, &quot; &amp; Out_IPL3_Sensor2
+                            End If
+                            Else
+                            SIF_A_sensors = Out_IPL3_Sensor &amp; &quot;, &quot; &amp; Out_IPL3_Sensor2 &amp; &quot;, &quot; &amp; Out_IPL3_Sensor3
+                        End If
+                        If srsw.Range(&quot;SIF_A_sensors&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;SIF_A_sensors&quot;).Value = scenario_no &amp; SIF_A_sensors
+                            Else
+                            srsw.Range(&quot;SIF_A_sensors&quot;).Value = srsw.Range(&quot;SIF_A_sensors&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; SIF_A_sensors
+                        End If
+                        Out_IPL3_FinalElement = srw.Cells(R, srw.Range(&quot;Out_IPL3_FinalElement&quot;).Column).Value
+                        Out_IPL3_FinalElement2 = srw.Cells(R, srw.Range(&quot;Out_IPL3_FinalElement2&quot;).Column).Value
+                        If Out_IPL3_FinalElement2 = &quot;&quot; Then
+                            SIS_A_FCE = Out_IPL3_FinalElement
+                            Else
+                            SIS_A_FCE = Out_IPL3_FinalElement &amp; &quot;, &quot; &amp; Out_IPL3_FinalElement2
+                        End If
+                        If srsw.Range(&quot;SIF_A_FCE&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;SIF_A_FCE&quot;).Value = scenario_no &amp; SIS_A_FCE
+                            Else
+                            srsw.Range(&quot;SIF_A_FCE&quot;).Value = srsw.Range(&quot;SIF_A_FCE&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; SIS_A_FCE
+                        End If
+                        Out_IPL3_Detail = srw.Cells(R, srw.Range(&quot;Out_IPL3_Detail&quot;).Column).Value
+                        If srsw.Range(&quot;SIF_A_desc&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;SIF_A_desc&quot;).Value = scenario_no &amp; Out_IPL3_Detail
+                            Else
+                            srsw.Range(&quot;SIF_A_desc&quot;).Value = srsw.Range(&quot;SIF_A_desc&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; Out_IPL3_Detail
+                        End If
+                    End If
+                    
+                    Out_IPL_4 = srw.Cells(R, srw.Range(&quot;Out_IPL_4&quot;).Column).Value
+                    If Out_IPL_4 &gt; 0 Then
+                        Out_IPL4_Sensor = srw.Cells(R, srw.Range(&quot;Out_IPL4_Sensor&quot;).Column).Value
+                        Out_IPL4_Sensor2 = srw.Cells(R, srw.Range(&quot;Out_IPL4_Sensor2&quot;).Column).Value
+                        Out_IPL4_Sensor3 = srw.Cells(R, srw.Range(&quot;Out_IPL4_Sensor3&quot;).Column).Value
+                        If Out_IPL4_Sensor3 = &quot;&quot; Then
+                            If Out_IPL4_Sensor2 = &quot;&quot; Then
+                                SIF_B_sensors = Out_IPL4_Sensor
+                                Else
+                                SIF_B_sensors = Out_IPL4_Sensor &amp; &quot;, &quot; &amp; Out_IPL4_Sensor2
+                            End If
+                            Else
+                            SIF_B_sensors = Out_IPL4_Sensor &amp; &quot;, &quot; &amp; Out_IPL4_Sensor2 &amp; &quot;, &quot; &amp; Out_IPL4_Sensor3
+                        End If
+                        If srsw.Range(&quot;SIF_B_sensors&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;SIF_B_sensors&quot;).Value = scenario_no &amp; SIF_B_sensors
+                            Else
+                            srsw.Range(&quot;SIF_B_sensors&quot;).Value = srsw.Range(&quot;SIF_B_sensors&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; SIF_B_sensors
+                        End If
+                        Out_IPL4_FinalElement = srw.Cells(R, srw.Range(&quot;Out_IPL4_FinalElement&quot;).Column).Value
+                        Out_IPL4_FinalElement2 = srw.Cells(R, srw.Range(&quot;Out_IPL4_FinalElement2&quot;).Column).Value
+                        If Out_IPL4_FinalElement2 = &quot;&quot; Then
+                            SIS_B_FCE = Out_IPL4_FinalElement
+                            Else
+                            SIS_B_FCE = Out_IPL4_FinalElement &amp; &quot;, &quot; &amp; Out_IPL4_FinalElement2
+                        End If
+                        If srsw.Range(&quot;SIF_B_FCE&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;SIF_B_FCE&quot;).Value = scenario_no &amp; SIS_B_FCE
+                            Else
+                            srsw.Range(&quot;SIF_B_FCE&quot;).Value = srsw.Range(&quot;SIF_B_FCE&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; SIS_B_FCE
+                        End If
+                        Out_IPL4_Detail = srw.Cells(R, srw.Range(&quot;Out_IPL4_Detail&quot;).Column).Value
+                        If srsw.Range(&quot;SIF_B_desc&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;SIF_B_desc&quot;).Value = scenario_no &amp; Out_IPL4_Detail
+                            Else
+                            srsw.Range(&quot;SIF_B_desc&quot;).Value = srsw.Range(&quot;SIF_B_desc&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; Out_IPL4_Detail
+                        End If
+                    End If
+                    
+                    Out_IPL_5 = srw.Cells(R, srw.Range(&quot;Out_IPL_5&quot;).Column).Value
+                    If Out_IPL_5 &gt; 0 Then
+                        Out_IPL5_Detail = srw.Cells(R, srw.Range(&quot;Out_IPL5_Detail&quot;).Column).Value
+                        If srsw.Range(&quot;PRD_desc&quot;).Value = &quot;&quot; Then
+                            srsw.Range(&quot;PRD_desc&quot;).Value = scenario_no &amp; Out_IPL5_Detail
+                            Else
+                            srsw.Range(&quot;PRD_desc&quot;).Value = srsw.Range(&quot;PRD_desc&quot;).Value &amp; Chr(10) &amp; scenario_no &amp; Out_IPL5_Detail
+                        End If
+                    End If
+                End If
+            End If
+            R = R + 1
+        Next x
+        With Workbooks(SRS)
+            .Activate
+            .Worksheets(&quot;SRS and Approvals&quot;).Activate
+            Range(&quot;PE_MR_names&quot;).Select
+            ActiveWindow.ScrollColumn = 1
+            ActiveWindow.ScrollRow = 1
+        End With
+    End If
+    If MART_error = True Then
+        MsgBox (&quot;Units for Maximum Allowable Response Time not recognized for one or more scenarios.&quot; &amp; Chr(10) &amp; &quot;Check problematic cells marked red on Scenario Results.&quot;)
+    End If
+    
+    &apos; Clear filters
+    filt = srw.AutoFilter.Range.Address
+    srw.Range(filt).AutoFilter
+    srw.Range(filt).AutoFilter
+    
+    Application.Calculation = xlCalculationAutomatic
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Exit Sub
+    
+Open_Error:
+
+    MsgBox &quot;Error opening file.  Check that file is not already opened.&quot;
+    Application.Calculation = xlCalculationAutomatic
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Exit Sub
+    
+Sheet_Error:
+
+    MsgBox &quot;Could not find &quot;&quot;SRS and Approvals&quot;&quot; sheet in workbook selected.  Check that SRS workbook is the latest version.&quot;
+    Workbooks(SRS).Close savechanges:=False
+    Application.Calculation = xlCalculationAutomatic
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Exit Sub
+End Sub
+Sub Write_LOPA_Back()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set lopa = ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;)
+    Set out = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+    lopa.Calculate
+    c_out = out.Range(&quot;Out_Scenario_No&quot;).Column
+    c_lopa = lopa.Range(&quot;LOPA_Case_No&quot;).Column
+    r_lopa = lopa.Range(&quot;LOPA_Case_No&quot;).Row + 1
+    Do While Not lopa.Cells(r_lopa, c_lopa).Value = &quot;&quot;
+        out.Cells.EntireColumn.Hidden = False
+        case_no = lopa.Cells(r_lopa, c_lopa).Text
+        case_no1 = Left(case_no, Len(case_no) - 3)
+        case_no2 = Right(case_no, 2)
+        r_out = &quot;&quot;
+        first_row = out.Range(&quot;Out_Scenario_No&quot;).Row + 1
+        last_row = out.UsedRange.Rows.Count
+        For t_row = first_row To last_row
+            scenario_number = Format(out.Cells(t_row, c_out).Value, &quot;@&quot;)
+            scenario_number1 = Left(scenario_number, Len(scenario_number) - 3)
+            scenario_number2 = Right(scenario_number, 2)
+            If case_no1 = scenario_number1 And case_no2 = scenario_number2 Then
+                r_out = t_row
+                Exit For
+            End If
+        Next
+        If r_out = &quot;&quot; Then
+            MsgBox &quot;Critical RAST Error: Scenario number &quot; &amp; case_no &amp; &quot; could not be found in Scenario Results.  Contact tool SME to avoid loss of data.&quot;
+            GoTo 100
+            Else
+            
+            If Not Left(out.Cells(r_out, out.Range(&quot;Out_Cross_Ref&quot;).Column).Formula, 1) = &quot;=&quot; Then
+                out.Cells(r_out, out.Range(&quot;Out_Cross_Ref&quot;).Column).Value = _
+                    lopa.Cells(r_lopa + 2, lopa.Range(&quot;LOPA_Case_No&quot;).Column).Value
+            End If
+            
+            out.Cells(r_out, out.Range(&quot;Out_ATF_Detail&quot;).Column).Value = lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_Alt_TF&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_ATF_Desc&quot;).Column).Value = lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_Alt_TF&quot;).Column).Value
+            If Not IsError(lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_Alt_TF&quot;).Column).Value) Then
+                If Not lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_Alt_TF&quot;).Column).Value = &quot;&quot; Then
+                    out.Cells(r_out, out.Range(&quot;Out_ATF&quot;).Column).Value = lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_Alt_TF&quot;).Column).Value
+                    Else
+                    out.Cells(r_out, out.Range(&quot;Out_ATF&quot;).Column).Value = &quot;&quot;
+                End If
+                Else
+                out.Cells(r_out, out.Range(&quot;Out_ATF&quot;).Column).Value = &quot;&quot;
+            End If
+            
+            out.Cells(r_out, out.Range(&quot;Out_Procedure_Freq&quot;).Column).Value = lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_HE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Procedure_FR&quot;).Column).Value = lopa.Cells(r_lopa + 3, lopa.Range(&quot;LOPA_HE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_HE_Comment&quot;).Column).Value = lopa.Cells(r_lopa + 7, lopa.Range(&quot;LOPA_HE_C2&quot;).Column).Value
+            
+            out.Cells(r_out, out.Range(&quot;Out_Cause_Desc&quot;).Column).Value = _
+                lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_IE&quot;).Column).Value
+            If InStr(1, out.Cells(r_out, out.Range(&quot;Out_Cause&quot;).Column).Text, &quot;USER&quot;, vbTextCompare) = 0 And out.Cells(r_out, out.Range(&quot;Out_Cause_Tool&quot;).Column).Value = &quot;&quot; And Not (out.Cells(r_out, out.Range(&quot;Out_Cause&quot;).Column).Value = lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_IE&quot;).Column).Value) Then
+                out.Cells(r_out, out.Range(&quot;Out_Cause_Tool&quot;).Column).Value = out.Cells(r_out, out.Range(&quot;Out_Cause&quot;).Column).Value
+            End If
+            out.Cells(r_out, out.Range(&quot;Out_Cause&quot;).Column).Value = _
+                lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_IE&quot;).Column).Value
+            If out.Cells(r_out, out.Range(&quot;Out_Cause_Tool&quot;).Column).Value = out.Cells(r_out, out.Range(&quot;Out_Cause&quot;).Column).Value Then
+                out.Cells(r_out, out.Range(&quot;Out_Cause_Tool&quot;).Column).Value = &quot;&quot;
+            End If
+            If out.Cells(r_out, out.Range(&quot;Out_Cause&quot;).Column).Value = &quot;USER DEFINED &quot; &amp; out.Cells(r_out, out.Range(&quot;Out_Cause_Tool&quot;).Column).Value Then
+                out.Cells(r_out, out.Range(&quot;Out_Cause&quot;).Column).Value = out.Cells(r_out, out.Range(&quot;Out_Cause_Tool&quot;).Column).Value
+                out.Cells(r_out, out.Range(&quot;Out_Cause_Tool&quot;).Column).Value = &quot;&quot;
+            End If
+            out.Cells(r_out, out.Range(&quot;Out_IEF&quot;).Column).Value = _
+                lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_IE&quot;).Column).Value
+                
+            out.Cells(r_out, out.Range(&quot;Out_Cause_Sensor&quot;).Column).Value = lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_Sensor2&quot;).Column).Value = lopa.Cells(r_lopa + 1, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_Sensor3&quot;).Column).Value = lopa.Cells(r_lopa + 2, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_Sensor4&quot;).Column).Value = lopa.Cells(r_lopa + 3, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_Sensor5&quot;).Column).Value = lopa.Cells(r_lopa + 4, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_FinalElement&quot;).Column).Value = lopa.Cells(r_lopa + 5, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_FinalElement2&quot;).Column).Value = lopa.Cells(r_lopa + 6, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_FinalElement3&quot;).Column).Value = lopa.Cells(r_lopa + 7, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_FinalElement4&quot;).Column).Value = lopa.Cells(r_lopa + 8, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_Comment&quot;).Column).Value = lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_Cause_LogicSolver&quot;).Column).Value = lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_IE_C2&quot;).Column).Value
+            
+            out.Cells(r_out, out.Range(&quot;Out_API_Detail&quot;).Column).Value = _
+                lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_Alt_PI&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_API_Desc&quot;).Column).Value = _
+                lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_Alt_PI&quot;).Column).Value
+            If Not IsError(lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_Alt_PI&quot;).Column).Value) Then
+                If Not lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_Alt_PI&quot;).Column).Value = &quot;&quot; Then
+                    out.Cells(r_out, out.Range(&quot;Out_API&quot;).Column).Value = lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_Alt_PI&quot;).Column).Value
+                    Else
+                    out.Cells(r_out, out.Range(&quot;Out_API&quot;).Column).Value = &quot;&quot;
+                End If
+                Else
+                out.Cells(r_out, out.Range(&quot;Out_API&quot;).Column).Value = &quot;&quot;
+            End If
+                
+            out.Cells(r_out, out.Range(&quot;Out_ATEF_Detail&quot;).Column).Value = _
+                lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_Alt_PE&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_ATEF_Desc&quot;).Column).Value = _
+                lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_Alt_PE&quot;).Column).Value
+            If Not IsError(lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_Alt_PE&quot;).Column).Value) Then
+                If Not lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_Alt_PE&quot;).Column).Value = &quot;&quot; Then
+                    out.Cells(r_out, out.Range(&quot;Out_ATEF&quot;).Column).Value = lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_Alt_PE&quot;).Column).Value
+                    Else
+                    out.Cells(r_out, out.Range(&quot;Out_ATEF&quot;).Column).Value = &quot;&quot;
+                End If
+                Else
+                out.Cells(r_out, out.Range(&quot;Out_ATEF&quot;).Column).Value = &quot;&quot;
+            End If
+                
+            out.Cells(r_out, out.Range(&quot;Out_POE_Detail&quot;).Column).Value = _
+                lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_POE&quot;).Column).Value
+                
+            If InStr(1, lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_IE&quot;).Column).Value, &quot;Human Failure&quot;) &gt; 0 And InStr(1, lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_POE&quot;).Column).Value, &quot;USER DEFINED&quot;, vbTextCompare) = 0 Then
+                out.Cells(r_out, out.Range(&quot;Out_POE_Desc&quot;).Column).Value = &quot;None&quot;
+                out.Cells(r_out, out.Range(&quot;Out_POE&quot;).Column).Value = 0
+                Else
+                out.Cells(r_out, out.Range(&quot;Out_POE_Desc&quot;).Column).Value = _
+                    lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_POE&quot;).Column).Value
+                out.Cells(r_out, out.Range(&quot;Out_POE&quot;).Column).Value = _
+                    lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_POE&quot;).Column).Value
+            End If
+            
+            For x = 1 To 8
+                out.Cells(r_out, out.Range(&quot;Out_IPL_&quot; &amp; x).Column).Value = _
+                    lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_IPL&quot; &amp; x).Column).Value
+                out.Cells(r_out, out.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Desc&quot;).Column).Value = _
+                    lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_IPL&quot; &amp; x).Column).Value
+                out.Cells(r_out, out.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Status&quot;).Column).Value = _
+                    lopa.Cells(r_lopa + 8, lopa.Range(&quot;LOPA_IPL&quot; &amp; x).Column).Value
+                out.Cells(r_out, out.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Detail&quot;).Column).Value = _
+                    lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_IPL&quot; &amp; x).Column).Value
+            Next x
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_Alarm&quot;).Column).Value = lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_Sensor&quot;).Column).Value = lopa.Cells(r_lopa + 1, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_Sensor2&quot;).Column).Value = lopa.Cells(r_lopa + 2, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_Sensor3&quot;).Column).Value = lopa.Cells(r_lopa + 3, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_FinalElement&quot;).Column).Value = lopa.Cells(r_lopa + 4, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_FinalElement2&quot;).Column).Value = lopa.Cells(r_lopa + 5, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_SetPoint&quot;).Column).Value = lopa.Cells(r_lopa + 6, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_DelayTime&quot;).Column).Value = lopa.Cells(r_lopa + 7, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_ALR&quot;).Column).Value = lopa.Cells(r_lopa + 8, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_Other&quot;).Column).Value = lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL1_LogicSolver&quot;).Column).Value = lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_IPL1_C2&quot;).Column).Value
+
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_Alarm&quot;).Column).Value = lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_Sensor&quot;).Column).Value = lopa.Cells(r_lopa + 1, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_Sensor2&quot;).Column).Value = lopa.Cells(r_lopa + 2, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_Sensor3&quot;).Column).Value = lopa.Cells(r_lopa + 3, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_FinalElement&quot;).Column).Value = lopa.Cells(r_lopa + 4, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_FinalElement2&quot;).Column).Value = lopa.Cells(r_lopa + 5, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_SetPoint&quot;).Column).Value = lopa.Cells(r_lopa + 6, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_DelayTime&quot;).Column).Value = lopa.Cells(r_lopa + 7, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_ALR&quot;).Column).Value = lopa.Cells(r_lopa + 8, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_Other&quot;).Column).Value = lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL2_LogicSolver&quot;).Column).Value = lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_IPL2_C2&quot;).Column).Value
+            
+            out.Cells(r_out, out.Range(&quot;Out_SIFA&quot;).Column).Value = lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_Sensor&quot;).Column).Value = lopa.Cells(r_lopa + 1, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_Sensor2&quot;).Column).Value = lopa.Cells(r_lopa + 2, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_Sensor3&quot;).Column).Value = lopa.Cells(r_lopa + 3, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_FinalElement&quot;).Column).Value = lopa.Cells(r_lopa + 4, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_FinalElement2&quot;).Column).Value = lopa.Cells(r_lopa + 5, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_SetPoint&quot;).Column).Value = lopa.Cells(r_lopa + 6, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_DelayTime&quot;).Column).Value = lopa.Cells(r_lopa + 7, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_Other&quot;).Column).Value = lopa.Cells(r_lopa + 8, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_Comment&quot;).Column).Value = lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL3_LogicSolver&quot;).Column).Value = lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_IPL3_C2&quot;).Column).Value
+            
+            out.Cells(r_out, out.Range(&quot;Out_SIFB&quot;).Column).Value = lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_Sensor&quot;).Column).Value = lopa.Cells(r_lopa + 1, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_Sensor2&quot;).Column).Value = lopa.Cells(r_lopa + 2, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_Sensor3&quot;).Column).Value = lopa.Cells(r_lopa + 3, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_FinalElement&quot;).Column).Value = lopa.Cells(r_lopa + 4, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_FinalElement2&quot;).Column).Value = lopa.Cells(r_lopa + 5, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_SetPoint&quot;).Column).Value = lopa.Cells(r_lopa + 6, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_DelayTime&quot;).Column).Value = lopa.Cells(r_lopa + 7, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_Other&quot;).Column).Value = lopa.Cells(r_lopa + 8, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_Comment&quot;).Column).Value = lopa.Cells(r_lopa + 9, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_IPL4_LogicSolver&quot;).Column).Value = lopa.Cells(r_lopa + 10, lopa.Range(&quot;LOPA_IPL4_C2&quot;).Column).Value
+            
+            out.Cells(r_out, out.Range(&quot;Out_Comments&quot;).Column).Value = _
+                lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_Notes&quot;).Column).Value
+            
+            out.Cells(r_out, out.Range(&quot;Out_Issues&quot;).Column).Value = _
+                lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_Issues&quot;).Column).Value
+            
+            out.Cells(r_out, out.Range(&quot;Out_TCA&quot;).Column).Value = _
+                lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_Approval_Name&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_TCA_Date&quot;).Column).Value = _
+                lopa.Cells(r_lopa, lopa.Range(&quot;LOPA_Approval_Date&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_PSA&quot;).Column).Value = _
+                lopa.Cells(r_lopa + 4, lopa.Range(&quot;LOPA_Approval_Name&quot;).Column).Value
+            
+            out.Cells(r_out, out.Range(&quot;Out_PSA_Date&quot;).Column).Value = _
+                lopa.Cells(r_lopa + 4, lopa.Range(&quot;LOPA_Approval_Date&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_PCA&quot;).Column).Value = _
+                lopa.Cells(r_lopa + 8, lopa.Range(&quot;LOPA_Approval_Name&quot;).Column).Value
+            out.Cells(r_out, out.Range(&quot;Out_PCA_Date&quot;).Column).Value = _
+                lopa.Cells(r_lopa + 8, lopa.Range(&quot;LOPA_Approval_Date&quot;).Column).Value
+        End If
+        r_lopa = r_lopa + 11
+    Loop
+    Clear_LOPA
+    
+    On Error Resume Next
+    ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Release Calculations&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Scenario List&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Input Guidance&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Input Error Check&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Relief Effluent&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Introduction&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;LOPA Menu&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Process Conditions&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Plant Layout&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;FEI &amp; CEI&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Pump Deadhead&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Pool Fire Frequency&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Risk Summary&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Hazards &amp; Consequences&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Scenario Selection Guidance&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;IPL Summary&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;MART_MALR&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Study Parameters&quot;).Visible = True
+    out.Activate
+    currentFiltRange = out.AutoFilter.Range.Address
+    out.Range(currentFiltRange).AutoFilter
+    out.Range(currentFiltRange).AutoFilter
+    If Range(&quot;Filter_Equipment&quot;).Value = &quot;Yes&quot; Then
+        If Not mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+            out.Range(currentFiltRange).AutoFilter _
+                field:=out.Range(&quot;Out_Equip_Tag&quot;).Column, _
+                Criteria1:=mmw.Range(&quot;Equipment_Tag&quot;).Value
+        End If
+    End If
+    If Range(&quot;Filter_IPLs&quot;).Value = &quot;Yes&quot; Then
+        If Not mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+            out.Range(currentFiltRange).AutoFilter _
+                field:=out.Range(&quot;Out_LPR&quot;).Column, Criteria1:=&quot;&gt;0&quot;, _
+                Operator:=xlAnd
+        End If
+    End If
+    If Range(&quot;Filter_Worst&quot;).Value = &quot;Yes&quot; Then
+        If Not mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+            out.Range(currentFiltRange).AutoFilter field:=out.Range(&quot;Out_Case_Evaluation&quot;).Column, Criteria1:=&quot;&lt;&gt;&quot;
+        End If
+    End If
+    
+    On Error GoTo 0
+
+    ActiveWindow.ScrollWorkbookTabs Position:=xlFirst
+100    Application.Calculation = xlCalculationAutomatic
+
+    y = 8
+    x = out.Range(&quot;Out_Scenario_No&quot;).Offset(0, 1).Left + 3
+    out.Shapes(&quot;Equip_Loaded&quot;).Left = x
+    x = x + out.Shapes(&quot;Equip_Loaded&quot;).Width + y
+    
+    out.Shapes.Range(Array(&quot;Equip_Loaded_Label&quot;, &quot;Equip_Loaded&quot;)).Align msoAlignCenters, msoFalse
+    
+    out.Shapes(&quot;Go To Equipment Table&quot;).Left = x
+    x = x + out.Shapes(&quot;Go To Equipment Table&quot;).Width + y
+    
+    out.Shapes(&quot;LOPA_Worksheet_&gt;&quot;).Left = x
+    
+    x = out.Range(&quot;Out_Scenario_No&quot;).Offset(0, 1).Left + 3 + out.Shapes(&quot;Equip_Loaded&quot;).Width + y
+    out.Shapes(&quot;Sort&quot;).Left = x
+    x = x + out.Shapes(&quot;Sort&quot;).Width + y
+    
+    out.Shapes(&quot;Reset_Filters&quot;).Left = x
+    x = x + out.Shapes(&quot;Reset_Filters&quot;).Width + y
+    
+    out.Shapes(&quot;Create_User_Scenario&quot;).Left = x
+    x = x + out.Shapes(&quot;Create_User_Scenario&quot;).Width + y
+    
+    out.Shapes(&quot;Modify_User_Scenario&quot;).Left = x
+    x = x + out.Shapes(&quot;Modify_User_Scenario&quot;).Width + y
+    
+    out.Shapes(&quot;Duplicate&quot;).Left = x
+    x = x + out.Shapes(&quot;Duplicate&quot;).Width + y
+    
+    
+    out.Shapes(&quot;Risk_Graph&quot;).Left = x
+
+    Application.ScreenUpdating = True
+End Sub
+Sub Clear_LOPA()
+    Set lopa = ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;)
+    Application.Calculation = xlCalculationManual
+    lopa.Unprotect
+    last = lopa.UsedRange.Rows.Count
+    last_c = lopa.UsedRange.Columns.Count
+    If last &gt; lopa.Range(&quot;LOPA_Case_No&quot;).Offset(12, 0).Row - 1 Then
+        lopa.Range(lopa.Range(&quot;LOPA_Case_No&quot;).Offset(12, -1), lopa.Cells(last, last_c)).ClearContents
+        lopa.Range(lopa.Range(&quot;LOPA_Case_No&quot;).Offset(12, -1), lopa.Cells(last, last_c)).ClearFormats
+        lopa.Range(lopa.Range(&quot;LOPA_Case_No&quot;).Offset(12, 0), lopa.Cells(last, lopa.Range(&quot;LOPA_Case_No&quot;).Column)).EntireRow.Delete
+    End If
+    r_lopa = lopa.Range(&quot;LOPA_Case_No&quot;).Row + 1
+    
+    With lopa
+        .Cells(r_lopa, .Range(&quot;LOPA_Case_No&quot;).Column - 1).Value = &quot;&quot;
+        .Cells(r_lopa, .Range(&quot;LOPA_Case_No&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 2, .Range(&quot;LOPA_Case_No&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 10, .Range(&quot;LOPA_Case_No&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_Desc&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 10, .Range(&quot;LOPA_Desc&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_Suggested_IPLs&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_TF&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 9, .Range(&quot;LOPA_TF&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_Alt_TF&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 9, .Range(&quot;LOPA_Alt_TF&quot;).Column).Value = &quot;&quot;
+        
+    
+        .Cells(r_lopa, .Range(&quot;LOPA_HE_C2&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 3, .Range(&quot;LOPA_HE_C2&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 7, .Range(&quot;LOPA_HE_C2&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_IE&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa, .Range(&quot;LOPA_IE&quot;).Column).ClearComments
+        .Cells(r_lopa + 9, .Range(&quot;LOPA_IE&quot;).Column).Value = &quot;&quot;
+        
+        .Range(.Cells(r_lopa, .Range(&quot;LOPA_IE_C2&quot;).Column), .Cells(r_lopa + 10, .Range(&quot;LOPA_IE_C2&quot;).Column)).Value = &quot;&quot;
+
+        .Cells(r_lopa, .Range(&quot;LOPA_POI&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 9, .Range(&quot;LOPA_POI&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_Alt_PI&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 9, .Range(&quot;LOPA_Alt_PI&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_EF&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 9, .Range(&quot;LOPA_EF&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_Alt_PE&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 9, .Range(&quot;LOPA_Alt_PE&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_POE&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 9, .Range(&quot;LOPA_POE&quot;).Column).Value = &quot;&quot;
+        
+        For x = 1 To 4
+            .Cells(r_lopa, .Range(&quot;LOPA_IPL&quot; &amp; x).Column).Value = &quot;&quot;
+            .Cells(r_lopa + 8, .Range(&quot;LOPA_IPL&quot; &amp; x).Column).Value = &quot;&quot;
+            .Cells(r_lopa + 9, .Range(&quot;LOPA_IPL&quot; &amp; x).Column).Value = &quot;&quot;
+            .Range(.Cells(r_lopa, .Range(&quot;LOPA_IPL&quot; &amp; x &amp; &quot;_C2&quot;).Column), .Cells(r_lopa + 10, .Range(&quot;LOPA_IPL&quot; &amp; x &amp; &quot;_C2&quot;).Column)).Value = &quot;&quot;
+        Next x
+        
+        For x = 5 To 8
+            .Range(.Cells(r_lopa, .Range(&quot;LOPA_IPL&quot; &amp; x).Column), .Cells(r_lopa + 9, .Range(&quot;LOPA_IPL&quot; &amp; x).Column)).Value = &quot;&quot;
+        Next x
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_Notes&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_Issues&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_Approval_Name&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 4, .Range(&quot;LOPA_Approval_Name&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 8, .Range(&quot;LOPA_Approval_Name&quot;).Column).Value = &quot;&quot;
+        
+        .Cells(r_lopa, .Range(&quot;LOPA_Approval_Date&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 4, .Range(&quot;LOPA_Approval_Date&quot;).Column).Value = &quot;&quot;
+        .Cells(r_lopa + 8, .Range(&quot;LOPA_Approval_Date&quot;).Column).Value = &quot;&quot;
+    
+        .Protect
+    End With
+End Sub
+Sub Check_for_Duplicate_Scenarios()
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    srw.Columns(&quot;A:A&quot;).AdvancedFilter Action:=xlFilterCopy, CopyToRange:=srw.Range(&quot;IV1&quot;), Unique:=True
+    x = Application.WorksheetFunction.CountA(srw.Columns(&quot;IV:IV&quot;))
+    srw.Columns(&quot;IV:IV&quot;).Delete
+    y = Application.WorksheetFunction.CountA(srw.Columns(&quot;A:A&quot;))
+    If y &gt; x Then
+        Clear_LOPA
+        MsgBox &quot;Duplicate scenarios numbers exist in Scenario Results sheet.  Scenario numbers must be unique to continue.&quot;
+        Application.Calculation = xlCalculationAutomatic
+        Application.ScreenUpdating = True
+        End
+    End If
+End Sub
+Sub Generate_LOPA()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    Set lw = ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;)
+    Total = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - _
+        Application.WorksheetFunction.CountA(srw.Range(srw.Range(&quot;Out_Scenario_No&quot;), srw.Range(&quot;Out_Scenario_No&quot;).End(xlUp)))
+    lopa_cases = Application.WorksheetFunction.CountIf(srw.Columns(srw.Range(&quot;Out_Credible&quot;).Column), &quot;Yes&quot;)
+    
+    filt = srw.AutoFilter.Range.Address
+    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Credible&quot;).Column, Criteria1:=&quot;Yes&quot;
+    filtered_cases = Application.WorksheetFunction.Subtotal(3, srw.Columns(srw.Range(&quot;Out_Credible&quot;).Column)) - 1
+    
+    If lopa_cases = 0 Then
+        MsgBox &quot;No Scenarios Selected for LOPA Analysis.&quot;
+        GoTo 100
+        ElseIf filtered_cases &gt; 200 Then
+            If MsgBox(&quot;Greater than 200 LOPA Scenarios Selected, filter Scenario List to reduce. Continue?&quot;, vbYesNo) = vbNo Then
+                GoTo 100
+                ElseIf filtered_cases &gt; 500 Then
+                If MsgBox(&quot;Greater than 500 LOPA Scenarios Selected, suggest filtering Scenario List and reduce.  Are you sure you want to continue?&quot;, vbYesNo) = vbNo Then
+                    GoTo 100
+                End If
+            End If
+    End If
+    lw.Unprotect
+    r_out = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+    r_lopa = lw.Range(&quot;LOPA_Case_No&quot;).Row + 1
+    lw.Visible = True
+    lw.Activate
+    last = lw.UsedRange.Rows.Count
+    If last &gt; lw.Range(&quot;LOPA_Case_No&quot;).Offset(12, 0).Row - 1 Then
+        lw.Range(lw.Range(&quot;LOPA_Case_No&quot;).Offset(12, 0), lw.Cells(last, lw.Range(&quot;LOPA_Case_No&quot;).Column)).EntireRow.Delete
+    End If
+    
+    Clear_LOPA
+    lw.Unprotect
+    
+    R = lw.Range(&quot;LOPA_Case_No&quot;).Row + 1
+    template = R &amp; &quot;:&quot; &amp; (R + 10)
+    Dim paste_rows As String
+    If filtered_cases &gt; 1 Then
+        scenario_rows = 11 * filtered_cases
+        paste_rows = lw.Range(lw.Range(&quot;LOPA_Case_No&quot;).Offset(12, 0), lw.Range(&quot;LOPA_Case_No&quot;).Offset(scenario_rows, 0)).EntireRow.Address
+        lw.Rows(template).Copy (lw.Rows(paste_rows))
+    End If
+    transfer = 0
+    x = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - 1
+    srw.Columns(&quot;A:A&quot;).EntireColumn.AutoFit
+    For y = 1 To x
+        If UCase(Trim(srw.Cells(r_out, srw.Range(&quot;Out_Credible&quot;).Column).Value)) = &quot;YES&quot; And srw.Rows(r_out).Hidden = False Then
+            transfer = transfer + 1
+            With lw
+                .Cells(r_lopa, .Range(&quot;LOPA_Case_No&quot;).Column - 1).Value = srw.Cells(r_out, srw.Range(&quot;Out_Compare&quot;).Column).Value
+                scenario_no = srw.Cells(r_out, srw.Range(&quot;Out_Scenario_No&quot;).Column).Text
+                If Len(scenario_no) &gt; 3 Then
+                    If IsNumeric(Right(scenario_no, 2)) Then
+                        If Mid(scenario_no, Len(scenario_no) - 2, 1) = &quot;.&quot; Or Mid(scenario_no, Len(scenario_no) - 2, 1) = &quot;,&quot; Then
+                            .Cells(r_lopa, .Range(&quot;LOPA_Case_No&quot;).Column).Value = scenario_no
+                            Else
+                            GoTo Scenario_No_Error
+                        End If
+                        Else
+                        GoTo Scenario_No_Error
+                    End If
+                    Else
+                    GoTo Scenario_No_Error
+                End If
+                .Cells(r_lopa + 2, .Range(&quot;LOPA_Case_No&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cross_Ref&quot;).Column).Value
+                
+                Description = srw.Cells(r_out, srw.Range(&quot;Out_Equip_Type&quot;).Column).Value
+                Description = Description &amp; &quot;, &quot;
+                Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_Equip_Tag&quot;).Column).Value
+                Select Case UCase(Left(srw.Cells(r_out, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value, 1))
+                    Case &quot;A&quot;, &quot;E&quot;, &quot;I&quot;, &quot;O&quot;, &quot;U&quot;
+                    Description = Description &amp; &quot;, is involved in an &quot;
+                    Case Else
+                    Description = Description &amp; &quot;, is involved in a &quot;
+                End Select
+                HL_1_S = Len(Description)
+                Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value
+                HL_1_E = Len(Description)
+                Select Case UCase(Left(srw.Cells(r_out, srw.Range(&quot;Out_Incident&quot;).Column).Value, 1))
+                    Case &quot;A&quot;, &quot;E&quot;, &quot;I&quot;, &quot;O&quot;, &quot;U&quot;
+                    Description = Description &amp; &quot; event resulting in an &quot;
+                    Case Else
+                    Description = Description &amp; &quot; event resulting in a &quot;
+                End Select
+                HL_2_S = Len(Description)
+                Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_Incident&quot;).Column).Value
+                HL_2_E = Len(Description)
+                If srw.Cells(r_out, srw.Range(&quot;Out_Outcome&quot;).Column).Value = &quot;Equipment Explosion&quot; Then
+                    &apos; Description detail with overpressure distance
+                    If Not srw.Cells(r_out, srw.Range(&quot;Out_Dist_Debris&quot;).Column).Value = &quot;&quot; Then
+                        Description = Description &amp; &quot; with a Distance to 1 psi Overpressure of &quot;
+                        Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_Dist_1psi&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Dist_1psi_Units&quot;).Column).Value
+                    End If
+                Else
+                    &apos; Description detail with chemical, release quantity, and release rate
+                    If srw.Cells(r_out, srw.Range(&quot;Out_AQ&quot;).Column).Value = &quot;&quot; Then
+                        Description = Description &amp; &quot; with subsequent&quot;
+                        Else
+                        Description = Description &amp; &quot; with subsequent &quot;
+                        Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_AQ&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_AQ_Units&quot;).Column).Value
+                    End If
+                    Description = Description &amp; &quot; airborne release of &quot;
+                    If IsNumeric(srw.Cells(r_out, srw.Range(&quot;Out_FK&quot;).Column).Value) Then
+                        If srw.Cells(r_out, srw.Range(&quot;Out_FK&quot;).Column).Value &lt; 1 Then
+                            Select Case UCase(Left(srw.Cells(r_out, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value, 1))
+                                Case &quot;A&quot;, &quot;E&quot;, &quot;I&quot;, &quot;O&quot;, &quot;U&quot;
+                                Description = Description &amp; &quot;an &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value &amp; &quot; Mixture&quot;
+                                Case Else
+                                Description = Description &amp; &quot;a &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value &amp; &quot; Mixture&quot;
+                            End Select
+                            Else
+                            Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value
+                        End If
+                        Else
+                        Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value
+                    End If
+                    If Not srw.Cells(r_out, srw.Range(&quot;Out_AR&quot;).Column).Value = &quot;&quot; Then
+                        Description = Description &amp; &quot; at an airborne release rate of &quot;
+                        Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_AR&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_AR_Units&quot;).Column).Value
+                    End If
+                End If
+                
+                Description = Description &amp; &quot;.&quot;
+                If Not srw.Cells(r_out, srw.Range(&quot;Out_Time_Relief&quot;).Column).Value = &quot;&quot; Then
+                    If InStr(1, srw.Cells(r_out, srw.Range(&quot;Out_Incident&quot;).Column).Value, &quot;Rupture&quot;, vbTextCompare) &gt; 0 Then
+                        Description = Description &amp; &quot;  Estimated time to rupture is &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Time_Relief&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Time_Relief_Units&quot;).Column).Value &amp; &quot;.&quot;
+                        Else
+                        Description = Description &amp; &quot;  Estimated time to relief set pressure is &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Time_Relief&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Time_Relief_Units&quot;).Column).Value &amp; &quot;.&quot;
+                    End If
+                End If
+                .Cells(r_lopa, .Range(&quot;LOPA_Desc&quot;).Column).Value = Description
+                With .Cells(r_lopa, .Range(&quot;LOPA_Desc&quot;).Column).Characters(HL_1_S, HL_1_E - HL_1_S + 1).Font
+                    .Bold = True
+                    .ColorIndex = 55
+                End With
+                With .Cells(r_lopa, .Range(&quot;LOPA_Desc&quot;).Column).Characters(HL_2_S, HL_2_E - HL_2_S + 1).Font
+                    .Bold = True
+                    .ColorIndex = 3
+                End With
+                Select Case UCase(Left(srw.Cells(r_out, srw.Range(&quot;Out_Outcome&quot;).Column).Value, 1))
+                    Case &quot;A&quot;, &quot;E&quot;, &quot;I&quot;, &quot;O&quot;, &quot;U&quot;
+                    Description = &quot;This incident could result in an &quot;
+                    Case Else
+                    Description = &quot;This incident could result in a &quot;
+                End Select
+                HL_3_S = Len(Description)
+                Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_Outcome&quot;).Column).Value
+                HL_3_E = Len(Description)
+                If Not srw.Cells(r_out, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column).Value = &quot;&quot; Then
+                    Description = Description &amp; &quot; &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column).Value
+                    Else
+                    If Not srw.Cells(r_out, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Value = &quot;&quot; Then
+                        If UCase(Left(srw.Cells(r_out, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Value, 7)) = &quot;EXCEEDS&quot; Then
+                            Description = Description &amp; &quot; which &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Value
+                            Else
+                            Description = Description &amp; &quot; &quot; &amp; srw.Cells(r_out, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Value
+                        End If
+                    End If
+                End If
+                Description = Description &amp; &quot; with the potential for &quot;
+                If Not srw.Cells(r_out, srw.Range(&quot;Out_Consequence_User&quot;).Column).Value = &quot;&quot; Then
+                    Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_Consequence_User&quot;).Column).Value
+                    Else
+                    Description = Description &amp; srw.Cells(r_out, srw.Range(&quot;Out_Consequence&quot;).Column).Value
+                End If
+                .Cells(r_lopa, .Range(&quot;LOPA_TF&quot;).Column).Value = Description
+                With .Cells(r_lopa, .Range(&quot;LOPA_TF&quot;).Column).Characters(HL_3_S, HL_3_E - HL_3_S + 1).Font
+                    .Bold = True
+                    .ColorIndex = 43
+                End With
+                Time_to_Event = srw.Cells(r_out, srw.Range(&quot;Out_Time_Relief&quot;).Column).Value
+                If Not IsError(Time_to_Event) Then
+                    If Not Time_to_Event = &quot;&quot; Then
+                        Time_Unit = srw.Cells(r_out, srw.Range(&quot;Out_Time_Relief_Units&quot;).Column).Value
+                        Select Case UCase(Time_Unit)
+                            Case &quot;SEC&quot;
+                            Time_Conv = 1 / 60
+                            Case &quot;MIN&quot;
+                            Time_Conv = 1
+                            Case &quot;HOUR&quot;
+                            Time_Conv = 60
+                            Case &quot;DAY&quot;
+                            Time_Conv = 24 * 60
+                            Case &quot;DAYS&quot;
+                            Time_Conv = 24 * 60
+                        End Select
+                        Time_Min = Time_to_Event * Time_Conv
+                        .Cells(r_lopa + 10, .Range(&quot;LOPA_Desc&quot;).Column).Value = Time_Min
+                    End If
+                End If
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_TF&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_TF&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_Suggested_IPLs&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Suggested_IPLs&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_Alt_TF&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_ATF_Detail&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_Alt_TF&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_ATF_Desc&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_HE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Procedure_Freq&quot;).Column).Value
+                .Cells(r_lopa + 3, .Range(&quot;LOPA_HE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Procedure_FR&quot;).Column).Value
+                .Cells(r_lopa + 7, .Range(&quot;LOPA_HE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_HE_Comment&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_IE&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_IE&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause&quot;).Column).Value
+                .Cells(r_lopa + 10, .Range(&quot;LOPA_Case_No&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IEF&quot;).Column).Value
+                
+                If srw.Cells(r_out, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Value &lt;&gt; srw.Cells(r_out, srw.Range(&quot;Out_Cause_Desc_Tool&quot;).Column).Value Then
+                    .Cells(r_lopa, .Range(&quot;LOPA_IE&quot;).Column).ClearComments
+                    .Cells(r_lopa, .Range(&quot;LOPA_IE&quot;).Column).AddComment
+                    .Cells(r_lopa, .Range(&quot;LOPA_IE&quot;).Column).Comment.Text Text:=&quot;Original Tool Description:&quot; &amp; Chr(10) &amp; srw.Cells(r_out, srw.Range(&quot;Out_Cause_Desc_Tool&quot;).Column).Value
+                    With .Cells(r_lopa, .Range(&quot;LOPA_IE&quot;).Column).Comment.Shape
+                        .Width = 100
+                        .Height = 100
+                    End With
+                    With .Cells(r_lopa, .Range(&quot;LOPA_IE&quot;).Column).Comment.Shape.TextFrame.Characters.Font
+                        .Name = &quot;Arial Narrow&quot;
+                        .Size = 8
+                    End With
+                    .Cells(r_lopa, .Range(&quot;LOPA_IE&quot;).Column).Comment.Shape.TextFrame.Characters(1, 26).Font.Bold = True
+                End If
+                .Cells(r_lopa, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_Sensor&quot;).Column).Value
+                .Cells(r_lopa + 1, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_Sensor2&quot;).Column).Value
+                .Cells(r_lopa + 2, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_Sensor3&quot;).Column).Value
+                .Cells(r_lopa + 3, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_Sensor4&quot;).Column).Value
+                .Cells(r_lopa + 4, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_Sensor5&quot;).Column).Value
+                .Cells(r_lopa + 5, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_FinalElement&quot;).Column).Value
+                .Cells(r_lopa + 6, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_FinalElement2&quot;).Column).Value
+                .Cells(r_lopa + 7, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_FinalElement3&quot;).Column).Value
+                .Cells(r_lopa + 8, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_FinalElement4&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_Comment&quot;).Column).Value
+                .Cells(r_lopa + 10, .Range(&quot;LOPA_IE_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Cause_LogicSolver&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_POI&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_POI_Detail&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_POI&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_PI&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_Alt_PI&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_API_Detail&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_Alt_PI&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_API_Desc&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_EF&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_EF_Detail&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_EF&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_TEF&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_Alt_PE&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_ATEF_Detail&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_Alt_PE&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_ATEF_Desc&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_POE&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_POE_Detail&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_POE&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_POE_Desc&quot;).Column).Value
+                
+                For IPL = 1 To 8
+                    .Cells(r_lopa, .Range(&quot;LOPA_IPL&quot; &amp; IPL).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Detail&quot;).Column).Value
+                    .Cells(r_lopa + 8, .Range(&quot;LOPA_IPL&quot; &amp; IPL).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Status&quot;).Column).Value
+                    .Cells(r_lopa + 9, .Range(&quot;LOPA_IPL&quot; &amp; IPL).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Desc&quot;).Column).Value
+                Next IPL
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_Alarm&quot;).Column).Value
+                .Cells(r_lopa + 1, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_Sensor&quot;).Column).Value
+                .Cells(r_lopa + 2, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_Sensor2&quot;).Column).Value
+                .Cells(r_lopa + 3, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_Sensor3&quot;).Column).Value
+                .Cells(r_lopa + 4, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_FinalElement&quot;).Column).Value
+                .Cells(r_lopa + 5, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_FinalElement2&quot;).Column).Value
+                .Cells(r_lopa + 6, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_SetPoint&quot;).Column).Value
+                .Cells(r_lopa + 7, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_DelayTime&quot;).Column).Value
+                .Cells(r_lopa + 8, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_ALR&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_Other&quot;).Column).Value
+                .Cells(r_lopa + 10, .Range(&quot;LOPA_IPL1_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL1_LogicSolver&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_Alarm&quot;).Column).Value
+                .Cells(r_lopa + 1, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_Sensor&quot;).Column).Value
+                .Cells(r_lopa + 2, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_Sensor2&quot;).Column).Value
+                .Cells(r_lopa + 3, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_Sensor3&quot;).Column).Value
+                .Cells(r_lopa + 4, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_FinalElement&quot;).Column).Value
+                .Cells(r_lopa + 5, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_FinalElement2&quot;).Column).Value
+                .Cells(r_lopa + 6, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_SetPoint&quot;).Column).Value
+                .Cells(r_lopa + 7, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_DelayTime&quot;).Column).Value
+                .Cells(r_lopa + 8, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_ALR&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_Other&quot;).Column).Value
+                .Cells(r_lopa + 10, .Range(&quot;LOPA_IPL2_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL2_LogicSolver&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_SIFA&quot;).Column).Value
+                .Cells(r_lopa + 1, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_Sensor&quot;).Column).Value
+                .Cells(r_lopa + 2, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_Sensor2&quot;).Column).Value
+                .Cells(r_lopa + 3, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_Sensor3&quot;).Column).Value
+                .Cells(r_lopa + 4, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_FinalElement&quot;).Column).Value
+                .Cells(r_lopa + 5, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_FinalElement2&quot;).Column).Value
+                .Cells(r_lopa + 6, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_SetPoint&quot;).Column).Value
+                .Cells(r_lopa + 7, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_DelayTime&quot;).Column).Value
+                .Cells(r_lopa + 8, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_Other&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_Comment&quot;).Column).Value
+                .Cells(r_lopa + 10, .Range(&quot;LOPA_IPL3_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL3_LogicSolver&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_SIFB&quot;).Column).Value
+                .Cells(r_lopa + 1, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_Sensor&quot;).Column).Value
+                .Cells(r_lopa + 2, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_Sensor2&quot;).Column).Value
+                .Cells(r_lopa + 3, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_Sensor3&quot;).Column).Value
+                .Cells(r_lopa + 4, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_FinalElement&quot;).Column).Value
+                .Cells(r_lopa + 5, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_FinalElement2&quot;).Column).Value
+                .Cells(r_lopa + 6, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_SetPoint&quot;).Column).Value
+                .Cells(r_lopa + 7, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_DelayTime&quot;).Column).Value
+                .Cells(r_lopa + 8, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_Other&quot;).Column).Value
+                .Cells(r_lopa + 9, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_Comment&quot;).Column).Value
+                .Cells(r_lopa + 10, .Range(&quot;LOPA_IPL4_C2&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_IPL4_LogicSolver&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_Notes&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Comments&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_Issues&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_Issues&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_Approval_Name&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_TCA&quot;).Column).Value
+                .Cells(r_lopa + 4, .Range(&quot;LOPA_Approval_Name&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_PSA&quot;).Column).Value
+                .Cells(r_lopa + 8, .Range(&quot;LOPA_Approval_Name&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_PCA&quot;).Column).Value
+                
+                .Cells(r_lopa, .Range(&quot;LOPA_Approval_Date&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_TCA_Date&quot;).Column).Value
+                .Cells(r_lopa + 4, .Range(&quot;LOPA_Approval_Date&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_PSA_Date&quot;).Column).Value
+                .Cells(r_lopa + 8, .Range(&quot;LOPA_Approval_Date&quot;).Column).Value = srw.Cells(r_out, srw.Range(&quot;Out_PCA_Date&quot;).Column).Value
+            End With
+            r_lopa = r_lopa + 11
+        End If
+        r_out = r_out + 1
+    Next y
+    Worksheets(&quot;LOPA Worksheet&quot;).Activate
+    If transfer = 0 Then
+        MsgBox &quot;No Filtered Scenarios Selected for LOPA Analysis.&quot;
+        srw.Activate
+        GoTo 100
+    End If
+    filt = srw.AutoFilter.Range.Address
+    Check_for_Duplicate_Scenarios
+    srw.Range(filt).AutoFilter
+    If transfer &gt; 0 Then
+        last = lw.UsedRange.Rows.Count
+        If last &gt; (lw.Range(&quot;LOPA_Case_No&quot;).Row + transfer * 11 + 1) Then
+            lw.Range(lw.Range(&quot;LOPA_Case_No&quot;).Offset(transfer * 11 + 1, 0), lw.Cells(last, lw.Range(&quot;LOPA_Case_No&quot;).Column)).EntireRow.Delete
+        End If
+    End If
+    On Error Resume Next
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;IPL List&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Study Parameters&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Release Calculations&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Scenario List&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Input Guidance&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Input Error Check&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Relief Effluent&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Introduction&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;LOPA Menu&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Process Conditions&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Plant Layout&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;FEI &amp; CEI&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Pump Deadhead&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;MI LOPA&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Pool Fire Frequency&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Risk Summary&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;IPL Summary&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Human Reliability&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;MART_MALR&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Scenario Selection Guidance&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Hazards &amp; Consequences&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Visible = False
+    ActiveWindow.ScrollWorkbookTabs Position:=xlFirst
+    LOPA_Shapes
+    On Error GoTo 0
+    lw.Protect (AllowFiltering)
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    End
+    
+Scenario_No_Error:
+    MsgBox (&quot;Scenario number in row &quot; &amp; r_out &amp; &quot; does not appear to fit the format XXXX.YY&quot; &amp; Chr(13) &amp; &quot;Make sure column is wide enough to see the full scenario number text.&quot;)
+    Worksheets(&quot;Scenario Results&quot;).Activate
+    
+100 Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+Sub Expand_All()
+    macrorunning = True
+    Application.ScreenUpdating = False
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_TF&quot;).Select
+    Selection.Characters.Text = &quot;+&quot;
+    Alt_Target_Factor
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;IE&quot;).Select
+    Selection.Characters.Text = &quot;+&quot;
+    IE_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PI&quot;).Select
+    Selection.Characters.Text = &quot;+&quot;
+    Alt_PI
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PE&quot;).Select
+    Selection.Characters.Text = &quot;+&quot;
+    Alt_PE
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;BPCS&quot;).Select
+    Selection.Characters.Text = &quot;+&quot;
+    BPCS_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alarm&quot;).Select
+    Selection.Characters.Text = &quot;+&quot;
+    Alarm_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISA&quot;).Select
+    Selection.Characters.Text = &quot;+&quot;
+    SISA_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISB&quot;).Select
+    Selection.Characters.Text = &quot;+&quot;
+    SISB_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SuggestedIPLs&quot;).Select
+    Selection.Characters.Text = &quot;&gt; Possible IPLs&quot;
+    Suggested_IPLs
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;HE&quot;).Select
+    Selection.Characters.Text = &quot;&gt; Human Error&quot;
+    Human_Error
+    LOPA_Shapes
+    Application.ScreenUpdating = True
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    macrorunning = False
+End Sub
+Sub Collapse_All()
+    macrorunning = True
+    Application.ScreenUpdating = False
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_TF&quot;).Select
+    Selection.Characters.Text = &quot;-&quot;
+    Alt_Target_Factor
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;IE&quot;).Select
+    Selection.Characters.Text = &quot;-&quot;
+    IE_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PI&quot;).Select
+    Selection.Characters.Text = &quot;-&quot;
+    Alt_PI
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PE&quot;).Select
+    Selection.Characters.Text = &quot;-&quot;
+    Alt_PE
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;BPCS&quot;).Select
+    Selection.Characters.Text = &quot;-&quot;
+    BPCS_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alarm&quot;).Select
+    Selection.Characters.Text = &quot;-&quot;
+    Alarm_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISA&quot;).Select
+    Selection.Characters.Text = &quot;-&quot;
+    SISA_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISB&quot;).Select
+    Selection.Characters.Text = &quot;-&quot;
+    SISB_Instruments
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SuggestedIPLs&quot;).Select
+    Selection.Characters.Text = &quot;&lt; Possible IPLs&quot;
+    Suggested_IPLs
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;HE&quot;).Select
+    Selection.Characters.Text = &quot;&lt; Human Error&quot;
+    Human_Error
+    Application.ScreenUpdating = True
+    LOPA_Shapes
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    macrorunning = False
+End Sub
+Sub Human_Error()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;HE&quot;).Select
+    x = Left(Selection.Characters.Text, 1)
+    Select Case x
+    Case &quot;&gt;&quot;
+        Range(Range(&quot;LOPA_HE_C1&quot;), Range(&quot;LOPA_HE_C2&quot;)).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;HE&quot;).Select
+        Selection.Characters.Text = &quot;&lt; Human Error&quot;
+    Case &quot;&lt;&quot;
+        Range(Range(&quot;LOPA_HE_C1&quot;), Range(&quot;LOPA_HE_C2&quot;)).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;HE&quot;).Select
+        Selection.Characters.Text = &quot;&gt; Human Error&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub IE_Instruments()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;IE&quot;).Select
+    x = Selection.Characters.Text
+    Select Case x
+    Case &quot;+&quot;
+        Range(Range(&quot;LOPA_IE_C1&quot;), Range(&quot;LOPA_IE_C2&quot;)).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;IE&quot;).Select
+        Selection.Characters.Text = &quot;-&quot;
+    Case &quot;-&quot;
+        Range(Range(&quot;LOPA_IE_C1&quot;), Range(&quot;LOPA_IE_C2&quot;)).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;IE&quot;).Select
+        Selection.Characters.Text = &quot;+&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub Alt_Target_Factor()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_TF&quot;).Select
+    x = Selection.Characters.Text
+    Select Case x
+    Case &quot;+&quot;
+        Range(&quot;LOPA_Alt_TF&quot;).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_TF&quot;).Select
+        Selection.Characters.Text = &quot;-&quot;
+    Case &quot;-&quot;
+        Range(&quot;LOPA_Alt_TF&quot;).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_TF&quot;).Select
+        Selection.Characters.Text = &quot;+&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub Alt_PI()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PI&quot;).Select
+    x = Selection.Characters.Text
+    Select Case x
+    Case &quot;+&quot;
+        Range(&quot;LOPA_Alt_PI&quot;).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PI&quot;).Select
+        Selection.Characters.Text = &quot;-&quot;
+    Case &quot;-&quot;
+        Range(&quot;LOPA_Alt_PI&quot;).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PI&quot;).Select
+        Selection.Characters.Text = &quot;+&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub Alt_PE()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PE&quot;).Select
+    x = Selection.Characters.Text
+    Select Case x
+    Case &quot;+&quot;
+        Range(&quot;LOPA_Alt_PE&quot;).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PE&quot;).Select
+        Selection.Characters.Text = &quot;-&quot;
+    Case &quot;-&quot;
+        Range(&quot;LOPA_Alt_PE&quot;).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alt_PE&quot;).Select
+        Selection.Characters.Text = &quot;+&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub BPCS_Instruments()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;BPCS&quot;).Select
+    x = Selection.Characters.Text
+    Select Case x
+    Case &quot;+&quot;
+        Range(Range(&quot;LOPA_IPL1_C1&quot;), Range(&quot;LOPA_IPL1_C2&quot;)).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;BPCS&quot;).Select
+        Selection.Characters.Text = &quot;-&quot;
+    Case &quot;-&quot;
+        Range(Range(&quot;LOPA_IPL1_C1&quot;), Range(&quot;LOPA_IPL1_C2&quot;)).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;BPCS&quot;).Select
+        Selection.Characters.Text = &quot;+&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub Alarm_Instruments()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alarm&quot;).Select
+    x = Selection.Characters.Text
+    Select Case x
+    Case &quot;+&quot;
+        Range(Range(&quot;LOPA_IPL2_C1&quot;), Range(&quot;LOPA_IPL2_C2&quot;)).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alarm&quot;).Select
+        Selection.Characters.Text = &quot;-&quot;
+    Case &quot;-&quot;
+        Range(Range(&quot;LOPA_IPL2_C1&quot;), Range(&quot;LOPA_IPL2_C2&quot;)).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;Alarm&quot;).Select
+        Selection.Characters.Text = &quot;+&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub SISA_Instruments()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISA&quot;).Select
+    x = Selection.Characters.Text
+    Select Case x
+    Case &quot;+&quot;
+        Range(Range(&quot;LOPA_IPL3_C1&quot;), Range(&quot;LOPA_IPL3_C2&quot;)).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISA&quot;).Select
+        Selection.Characters.Text = &quot;-&quot;
+    Case &quot;-&quot;
+        Range(Range(&quot;LOPA_IPL3_C1&quot;), Range(&quot;LOPA_IPL3_C2&quot;)).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISA&quot;).Select
+        Selection.Characters.Text = &quot;+&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub SISB_Instruments()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISB&quot;).Select
+    x = Selection.Characters.Text
+    Select Case x
+    Case &quot;+&quot;
+        Range(Range(&quot;LOPA_IPL4_C1&quot;), Range(&quot;LOPA_IPL4_C2&quot;)).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISB&quot;).Select
+        Selection.Characters.Text = &quot;-&quot;
+    Case &quot;-&quot;
+        Range(Range(&quot;LOPA_IPL4_C1&quot;), Range(&quot;LOPA_IPL4_C2&quot;)).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SISB&quot;).Select
+        Selection.Characters.Text = &quot;+&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub Suggested_IPLs()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Unprotect
+    End If
+    R = ActiveCell.Row
+    c = ActiveCell.Column
+    ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SuggestedIPLs&quot;).Select
+    x = Selection.Characters.Text
+    Select Case x
+    Case &quot;&gt; Possible IPLs&quot;
+        Range(&quot;LOPA_Suggested_IPLs&quot;).EntireColumn.Hidden = False
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SuggestedIPLs&quot;).Select
+        Selection.Characters.Text = &quot;&lt; Possible IPLs&quot;
+    Case &quot;&lt; Possible IPLs&quot;
+        Range(&quot;LOPA_Suggested_IPLs&quot;).EntireColumn.Hidden = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Shapes.Range(&quot;SuggestedIPLs&quot;).Select
+        Selection.Characters.Text = &quot;&gt; Possible IPLs&quot;
+    End Select
+    Cells(R, c).Select
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    End If
+End Sub
+Sub LOPA_Shapes()
+    Set lw = ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;)
+    
+    Call LOPA_Set_Right_Button(&quot;LOPA_TF&quot;, &quot;Alt_TF&quot;)
+    Call LOPA_Set_Right_Button(&quot;LOPA_IE&quot;, &quot;IE&quot;)
+    Call LOPA_Set_Right_Button(&quot;LOPA_POI&quot;, &quot;Alt_PI&quot;)
+    Call LOPA_Set_Right_Button(&quot;LOPA_EF&quot;, &quot;Alt_PE&quot;)
+    Call LOPA_Set_Right_Button(&quot;LOPA_IPL1&quot;, &quot;BPCS&quot;)
+    Call LOPA_Set_Right_Button(&quot;LOPA_IPL2&quot;, &quot;Alarm&quot;)
+    Call LOPA_Set_Right_Button(&quot;LOPA_IPL3&quot;, &quot;SISA&quot;)
+    Call LOPA_Set_Right_Button(&quot;LOPA_IPL4&quot;, &quot;SISB&quot;)
+    
+    Set LOPA_Cell = lw.Range(&quot;LOPA_IE&quot;)
+    Set LOPA_Button = lw.Shapes(&quot;HE&quot;)
+    LOPA_Button.Height = 10.8
+    x = LOPA_Cell.Left
+    LOPA_Button.Left = x + 3
+    y = LOPA_Cell.Offset(1, 0).Top
+    LOPA_Button.Top = y - 3 - LOPA_Button.Height
+    
+    Set LOPA_Cell = lw.Range(&quot;LOPA_Desc&quot;)
+    Set LOPA_Button = lw.Shapes(&quot;SuggestedIPLs&quot;)
+    LOPA_Button.Height = 10.8
+    x = LOPA_Cell.Offset(0, 1).Left
+    LOPA_Button.Left = x - 3 - LOPA_Button.Width
+    y = LOPA_Cell.Offset(1, 0).Top
+    LOPA_Button.Top = y - 3 - LOPA_Button.Height
+    
+End Sub
+
+Sub LOPA_Set_Right_Button(cell_name, button_name)
+    Set lw = ThisWorkbook.Worksheets(&quot;LOPA Worksheet&quot;)
+    Set LOPA_Cell = lw.Range(cell_name)
+    Set LOPA_Button = lw.Shapes(button_name)
+    LOPA_Button.Width = 10.8
+    LOPA_Button.Height = 10.8
+    x = LOPA_Cell.Offset(0, 1).Left
+    LOPA_Button.Left = x - 3 - LOPA_Button.Width
+    y = LOPA_Cell.Offset(1, 0).Top
+    LOPA_Button.Top = y - 3 - LOPA_Button.Height
+End Sub
+
+
+
+
+</script:module>

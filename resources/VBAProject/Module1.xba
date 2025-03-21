@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Module1" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub Save_ScenarioID_Input()
+&apos;
+&apos; Save_ScenarioID_Input Macro
+&apos; Save Existing Safeguards, Recommendations and Notes to the Scenario Identification worksheet
+&apos;
+    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    If mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+        MsgBox &quot;No equipment tag entered.  Data not saved to equipment table.&quot;
+        mmw.Activate
+        Range(&quot;Equipment_Tag&quot;).Activate
+        GoTo finish
+    End If
+    Worksheets(&quot;Scenario Identification&quot;).Unprotect
+    Worksheets(&quot;Scenario Identification&quot;).Range(&quot;EK6:EM63&quot;).Copy
+    Worksheets(&quot;Scenario Identification&quot;).Range(&quot;EG6:EI63&quot;).PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Application.CutCopyMode = False
+    Application.Calculate
+    Worksheets(&quot;Scenario Identification&quot;).Protect DrawingObjects:=True, Contents:=True, Scenarios:=True
+    macrorunning = False
+    Save_Equipment
+    Worksheets(&quot;Scenario List&quot;).Activate
+finish:
+    macrorunning = False
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+Sub Clear_ScenarioList_Input()
+&apos;
+&apos; Clear_ScenarioList_Input Macro
+&apos; Clear Existing Safeguards, Recommendations, and Notes from the Scanrio List worksheet
+&apos;
+    If macrorunning = False Then
+        If MsgBox(&quot;All input data on this sheet will be deleted.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Are you sure you would like to continue?&quot;, vbOKCancel, &quot;WARNING&quot;) = vbOK Then
+            Application.Calculation = xlCalculationManual
+            Application.ScreenUpdating = False
+            Else
+            Exit Sub
+        End If
+    End If
+    
+    With Sheets(&quot;Scenario List&quot;)
+        .Unprotect
+        .Range(&quot;T11:V60&quot;).ClearContents
+        .Range(&quot;D3:F7&quot;).ClearContents
+        .Protect
+    End With
+    
+    With Sheets(&quot;Scenario Identification&quot;)
+        .Unprotect
+        .Range(&quot;EG6:EI63&quot;).ClearContents
+        .Protect
+    End With
+     
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+        Application.Calculation = xlCalculationAutomatic
+    End If
+End Sub
+
+</script:module>

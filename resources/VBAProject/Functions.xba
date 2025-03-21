@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Functions" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Function sig(input_number, sig_fig, threshold, num_digits)
+If IsError(input_number) Then
+    sig = &quot;&quot;
+    Else
+    If input_number = &quot;&quot; Then
+        sig = &quot;&quot;
+        Else
+        If input_number = 0 Then
+            sig = 0
+            Else
+            If input_number &gt; threshold Then
+                num_digits = sig_fig - Int(Log(Abs(input_number)) / Log(10#)) - 1
+            End If
+            sig = WorksheetFunction.Round(input_number, num_digits)
+        End If
+    End If
+End If
+End Function
+
+</script:module>

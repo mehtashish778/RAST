@@ -1,0 +1,1928 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Scenario_Results" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Public check_length As Integer, check_blank As Integer
+Sub Generate_IPL_List()
+        ThisWorkbook.Worksheets(&quot;IPL List&quot;).Visible = True
+Dim srw As Object, ilw As Object, R As Integer, r_to As Integer, x As Integer, IPL_Column As String, _
+input_name As String, worksheet_ref As String, test As String, c As Integer
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+Set ilw = ThisWorkbook.Worksheets(&quot;IPL List&quot;)
+
+Clear_IPL_List
+
+ilw.Unprotect
+
+R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+r_to = ilw.Range(&quot;IPL_Type&quot;).Row + 1
+warning = 0
+Do While srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value &lt;&gt; &quot;&quot;
+    Application.StatusBar = &quot;Scenario Row &quot; &amp; R
+    For x = 1 To 8
+        If srw.Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; x).Column).Value &gt; 0 And srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column).Value = &quot;Yes&quot; And srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value &lt;&gt; &quot;Eliminated&quot; Then
+            ilw.Cells(r_to, ilw.Range(&quot;IPL_Scenario&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value
+            ilw.Cells(r_to, ilw.Range(&quot;IPL_Column&quot;).Column).Value = x
+            Select Case x
+                Case 1, 2
+                If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Desc&quot;).Column).Value = &quot;BPCS Independent of Initiating Event&quot; Then
+                    IPL_Column = &quot;1 - BPCS&quot;
+                    Else
+                    IPL_Column = &quot;2 - OPR&quot;
+                End If
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Alarm&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Alarm&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_MALR&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_ALR&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Comment&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Other&quot;).Column).Value
+                Case 3
+                IPL_Column = &quot;3 - SIS&quot;
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Alarm&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_SIFA&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_MALR&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Other&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Comment&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Comment&quot;).Column).Value
+                Case 4
+                IPL_Column = &quot;3 - SIS&quot;
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Alarm&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_SIFB&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_MALR&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Other&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Comment&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Comment&quot;).Column).Value
+                Case 5
+                IPL_Column = &quot;4 - Relief&quot;
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Alarm&quot;).Column).Value = &quot;n/a&quot;
+                Case 6, 7, 8
+                IPL_Column = &quot;5 - SRPS&quot;
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Alarm&quot;).Column).Value = &quot;n/a&quot;
+            End Select
+            ilw.Cells(r_to, ilw.Range(&quot;IPL_Type&quot;).Column).Value = IPL_Column
+            ilw.Cells(r_to, ilw.Range(&quot;IPL_Equipment_Tag&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column).Value
+            ilw.Cells(r_to, ilw.Range(&quot;IPL_Credit_Factor&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; x).Column).Value
+            ilw.Cells(r_to, ilw.Range(&quot;IPL_Gen_Desc&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Desc&quot;).Column).Value
+            ilw.Cells(r_to, ilw.Range(&quot;IPL_Detail_Desc&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Detail&quot;).Column).Value
+            ilw.Cells(r_to, ilw.Range(&quot;IPL_Status&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Status&quot;).Column).Value
+            If x &lt; 5 Then
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Sensor1&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Sensor&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Sensor2&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Sensor2&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_Sensor3&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Sensor3&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_FCE1&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_FinalElement&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_FCE2&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_FinalElement2&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_SetPoint&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_SetPoint&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_DelayTime&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_DelayTime&quot;).Column).Value
+                ilw.Cells(r_to, ilw.Range(&quot;IPL_LogicSolver&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_LogicSolver&quot;).Column).Value
+            End If
+            r_to = r_to + 1
+        End If
+    Next x
+    R = R + 1
+Loop
+R = ilw.UsedRange.SpecialCells(xlCellTypeLastCell).Row
+c = ilw.UsedRange.SpecialCells(xlCellTypeLastCell).Column
+
+ilw.Range(ilw.Cells(ilw.Range(&quot;IPL_Type&quot;).Row + 1, 1), ilw.Cells(R, c)).Sort _
+    key1:=ilw.Range(&quot;IPL_Type&quot;), Order1:=xlAscending, _
+    Key2:=ilw.Range(&quot;IPL_Alarm&quot;), Order1:=xlAscending, _
+    key3:=ilw.Range(&quot;IPL_Scenario&quot;), order2:=xlAscending, _
+    Header:=xlNo, OrderCustom:=1, MatchCase:=False, Orientation:=xlTopToBottom, _
+    DataOption1:=xlSortNormal, DataOption2:=xlSortNormal, DataOption3:=xlSortNormal
+
+With ilw.Range(ilw.Cells(2, 1), ilw.Cells(R, c))
+    .Borders(xlEdgeLeft).LineStyle = xlContinuous
+    .Borders(xlEdgeTop).LineStyle = xlContinuous
+    .Borders(xlEdgeBottom).LineStyle = xlContinuous
+    .Borders(xlEdgeRight).LineStyle = xlContinuous
+    .Borders(xlInsideVertical).LineStyle = xlContinuous
+    .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+End With
+
+ilw.Range(ilw.Cells(ilw.Range(&quot;IPL_Type&quot;).Row + 1, 1), ilw.Cells(R, c)).WrapText = False
+ilw.Range(ilw.Cells(ilw.Range(&quot;IPL_Type&quot;).Row + 1, 1), ilw.Cells(R, c)).Rows.AutoFit
+
+r_last = ilw.UsedRange.Rows.Count
+r_start = ilw.Range(&quot;IPL_Alarm&quot;).Row + 2
+c = ilw.Range(&quot;IPL_Alarm&quot;).Column
+c_last = ilw.UsedRange.Columns.Count
+
+R = r_start
+color_value = 16777215
+Do While Not R &gt; r_last
+    If ilw.Cells(R, c).Value &lt;&gt; &quot;n/a&quot; Then
+        If ilw.Cells(R, c).Value = ilw.Cells(R - 1, c).Value Then
+            ilw.Range(ilw.Cells(R, 1), ilw.Cells(R, c_last)).Interior.Color = ilw.Cells(R - 1, 2).Interior.Color
+            ilw.Range(ilw.Cells(R - 1, 1), ilw.Cells(R - 1, c_last)).Borders(xlEdgeBottom).LineStyle = xlNone
+        ElseIf ilw.Cells(R, c).Value = ilw.Cells(R + 1, c).Value Then
+            Select Case ilw.Cells(R - 1, 2).Interior.Color
+                Case 16777215
+                    color_value = 13434879
+                Case 13434879
+                    color_value = 16777215
+            End Select
+            ilw.Range(ilw.Cells(R, 1), ilw.Cells(R, c_last)).Interior.Color = color_value
+        Else
+            Select Case ilw.Cells(R - 1, 2).Interior.Color
+                Case 16777215
+                    color_value = 13434879
+                Case 13434879
+                    color_value = 16777215
+            End Select
+            ilw.Range(ilw.Cells(R, 1), ilw.Cells(R, c_last)).Interior.Color = color_value
+        End If
+        If ilw.Cells(R, c).Value = &quot;&quot; Then
+            warning = warning + 1
+            ilw.Cells(R, 1).Interior.ColorIndex = 3
+            ilw.Range(ilw.Cells(R - 1, 1), ilw.Cells(R - 1, c_last)).Borders(xlEdgeBottom).LineStyle = xlContinuous
+        End If
+    Else
+        ilw.Range(ilw.Cells(R, 1), ilw.Cells(R, c_last)).Interior.Color = 16777215
+        ilw.Range(ilw.Cells(R - 1, 1), ilw.Cells(R - 1, c_last)).Borders(xlEdgeBottom).LineStyle = xlContinuous
+    End If
+    R = R + 1
+Loop
+ilw.Range(ilw.Cells(R - 1, 1), ilw.Cells(R - 1, c_last)).Borders(xlEdgeBottom).LineStyle = xlContinuous
+ilw.Protect AllowFormattingColumns:=True, AllowFormattingRows:=True, DrawingObjects:=True, Contents:=True, Scenarios:=True, AllowSorting:=True, AllowFiltering:=True, AllowUsingPivotTables:=True
+
+If warning &gt; 0 Then
+    MsgBox (warning &amp; &quot; instrumented IPL&apos;s missing ID (see red cells).  Could not evaluate these IPL&apos;s.&quot;)
+End If
+
+Application.StatusBar = False
+Application.Calculation = xlCalculationAutomatic
+Application.ScreenUpdating = False
+End Sub
+Sub Clear_IPL_List()
+    Set ilw = ThisWorkbook.Worksheets(&quot;IPL List&quot;)
+    ilw.Unprotect
+    last = ilw.UsedRange.Rows.Count
+    If ilw.FilterMode = True Then
+        filt = ilw.AutoFilter.Range.Address
+        ilw.Range(filt).AutoFilter
+        ilw.Range(filt).AutoFilter
+    End If
+    If last &gt; ilw.Range(&quot;IPL_Credit_Factor&quot;).Row Then
+        ilw.Range(ilw.Range(&quot;IPL_Credit_Factor&quot;).Offset(1, 0), ilw.Cells(last + 1, 1)).EntireRow.Delete
+    End If
+    ilw.Activate
+    Application.GoTo reference:=ilw.Range(&quot;IPL_Type&quot;).Offset(-1, 0), scroll:=True
+    ilw.Protect AllowFormattingColumns:=True, AllowFormattingRows:=True, DrawingObjects:=True, Contents:=True, Scenarios:=True, AllowSorting:=True, AllowFiltering:=True, AllowUsingPivotTables:=True
+End Sub
+Sub Write_IPL_List_Back()
+Dim srw As Object, ilw As Object, R As Integer, r_to As Integer, x As Integer, IPL_Column As String, _
+input_name As String, worksheet_ref As String, test As String, c As Integer
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+Set ilw = ThisWorkbook.Worksheets(&quot;IPL List&quot;)
+If MsgBox(prompt:=&quot;This will overwrite data on Scenario Results sheet with data on IPL List.&quot; &amp; Chr(13) &amp; &quot;Are you sure you want to continue?&quot; &amp; Chr(13) &amp; &quot;Click OK to overwrite data.&quot;, Buttons:=vbOKCancel, Title:=&quot;Warning&quot;) = vbOK Then
+    R = ilw.Range(&quot;IPL_Alarm&quot;).Row + 1
+    Scenario_Num = ilw.Range(&quot;IPL_Alarm&quot;).Row
+    Do While ilw.Cells(R, ilw.Range(&quot;IPL_Scenario&quot;).Column).Value &lt;&gt; &quot;&quot;
+        Application.StatusBar = &quot;IPL Row &quot; &amp; R
+        ilw.Cells.EntireColumn.Hidden = False
+        case_no = ilw.Cells(R, ilw.Range(&quot;IPL_Scenario&quot;).Column).Text
+        case_no1 = Left(case_no, Len(case_no) - 3)
+        case_no2 = Right(case_no, 2)
+        r_to = 0
+        first_row = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+        last_row = srw.UsedRange.Rows.Count
+        For t_row = first_row To last_row
+            scenario_number = Format(srw.Cells(t_row, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value, &quot;@&quot;)
+            scenario_number1 = Left(scenario_number, Len(scenario_number) - 3)
+            scenario_number2 = Right(scenario_number, 2)
+            If case_no1 = scenario_number1 And case_no2 = scenario_number2 Then
+                r_to = t_row
+                Exit For
+            End If
+        Next
+        x = ilw.Cells(R, ilw.Range(&quot;IPL_Column&quot;).Column).Value
+        Select Case x
+            Case 1, 2
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Alarm&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Alarm&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_ALR&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_MALR&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Other&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Comment&quot;).Column).Value
+            Case 3
+                srw.Cells(r_to, srw.Range(&quot;Out_SIFA&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Alarm&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Other&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_MALR&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Comment&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Comment&quot;).Column).Value
+            Case 4
+                srw.Cells(r_to, srw.Range(&quot;Out_SIFB&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Alarm&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Other&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_MALR&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Comment&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Comment&quot;).Column).Value
+        End Select
+        Select Case x
+            Case 1, 2, 3, 4
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Detail&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Detail_Desc&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Sensor&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Sensor1&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Sensor2&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Sensor2&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Sensor3&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Sensor3&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_FinalElement&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_FCE1&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_FinalElement2&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_FCE2&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_SetPoint&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_SetPoint&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_DelayTime&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_DelayTime&quot;).Column).Value
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_LogicSolver&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_LogicSolver&quot;).Column).Value
+            Case 5, 6, 7, 8
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Detail&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Detail_Desc&quot;).Column).Value
+        End Select
+        Select Case ilw.Cells(R, ilw.Range(&quot;IPL_Status&quot;).Column).Value
+            Case &quot;&quot;, &quot;Proposed&quot;, &quot;Fully Implemented&quot;, &quot;In Progress&quot;
+                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Status&quot;).Column).Value = ilw.Cells(R, ilw.Range(&quot;IPL_Status&quot;).Column).Value
+        End Select
+        R = R + 1
+    Loop
+End If
+Application.StatusBar = False
+MsgBox (&quot;IPL List successfully written back to Scenario Results&quot;)
+End Sub
+&apos;  Author: Kevin Hersey
+&apos;  Last Revised: March 15, 2016
+&apos;  Last Revised By: Kevin Hersey
+&apos;
+Sub Quality_Check()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    Set lmw = ThisWorkbook.Worksheets(&quot;LOPA Menu&quot;)
+    c = srw.Range(&quot;Out_Scenario_No&quot;).Column
+    Total = Application.WorksheetFunction.CountA(srw.Columns(c))
+    Total = Total - Application.WorksheetFunction.CountA(srw.Range(srw.Range(&quot;Out_Scenario_No&quot;), srw.Cells(1, c)))
+    
+    Total = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - 2
+    R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+    warning = 0
+    For e = 1 To Total
+        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot;
+        If lmw.Range(&quot;QC_1&quot;).Value = &quot;Yes&quot; Then
+            If srw.Cells(R, srw.Range(&quot;Out_Last_Calc_Date&quot;).Column).Value &lt; DateAdd(&quot;yyyy&quot;, -5, Now) And srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value &lt;&gt; &quot;Eliminated&quot; And srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value &lt;&gt; &quot;Orphaned&quot; Then
+                warning = warning + 1
+                If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Scenario last calculation date blank or over 5 years ago&quot;
+                    Else
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Scenario last calculation date blank or over 5 years ago&quot;
+                End If
+            End If
+        End If
+        If srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column).Value = &quot;Yes&quot; Then
+            For x = 1 To 8
+                If lmw.Range(&quot;QC_7&quot;).Value = &quot;Yes&quot; Then
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Desc&quot;).Column).Value &lt;&gt; &quot;&quot; Then
+                        If srw.Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; x).Column).Value = 0 Then
+                            warning = warning + 1
+                            If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                                srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Credit for IPL&quot; &amp; x &amp; &quot; is zero, check gerneral desription is on LOPA worksheet pick list.&quot;
+                                Else
+                                srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Credit for IPL&quot; &amp; x &amp; &quot; is zero, check gerneral desription is on LOPA worksheet pick list.&quot;
+                            End If
+                        End If
+                    End If
+                End If
+                If lmw.Range(&quot;QC_8&quot;).Value = &quot;Yes&quot; Then
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; x).Column).Value &gt; 0 Then
+                        If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; x &amp; &quot;_Status&quot;).Column).Value = &quot;&quot; Then
+                            warning = warning + 1
+                            If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                                srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Status of IPL&quot; &amp; x &amp; &quot; is blank&quot;
+                                Else
+                                srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Status of IPL&quot; &amp; x &amp; &quot; is blank&quot;
+                            End If
+                        End If
+                    End If
+                End If
+            Next x
+            If lmw.Range(&quot;QC_9&quot;).Value = &quot;Yes&quot; Then
+                If srw.Cells(R, srw.Range(&quot;Out_TCA&quot;).Column).Value = &quot;&quot; Then
+                    warning = warning + 1
+                    If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Blank Tech Center approval name&quot;
+                        Else
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Blank Tech Center approval name&quot;
+                    End If
+                End If
+                If srw.Cells(R, srw.Range(&quot;Out_TCA_Date&quot;).Column).Value = &quot;&quot; Then
+                    warning = warning + 1
+                    If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Blank Tech Center approval date&quot;
+                        Else
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Blank Tech Center approval date&quot;
+                    End If
+                End If
+            End If
+            If lmw.Range(&quot;QC_10&quot;).Value = &quot;Yes&quot; Then
+                If srw.Cells(R, srw.Range(&quot;Out_PSA&quot;).Column).Value = &quot;&quot; Then
+                    warning = warning + 1
+                    If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Blank Process Safety approval name&quot;
+                        Else
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Blank Process Safety approval name&quot;
+                    End If
+                End If
+                If srw.Cells(R, srw.Range(&quot;Out_PSA_Date&quot;).Column).Value = &quot;&quot; Then
+                    warning = warning + 1
+                    If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Blank Process Safety approval date&quot;
+                        Else
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Blank Process Safety approval date&quot;
+                    End If
+                End If
+            End If
+            If lmw.Range(&quot;QC_11&quot;).Value = &quot;Yes&quot; Then
+                If srw.Cells(R, srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column).Value &gt; 0 Then
+                    If srw.Cells(R, srw.Range(&quot;Out_PCA&quot;).Column).Value = &quot;&quot; Then
+                        warning = warning + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Blank Process Automation approval name&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Blank Process Automation approval name&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_PCA_Date&quot;).Column).Value = &quot;&quot; Then
+                        warning = warning + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Blank Process Automation approval date&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Blank Process Automation approval date&quot;
+                        End If
+                    End If
+                End If
+            End If
+            If lmw.Range(&quot;QC_12&quot;).Value = &quot;Yes&quot; Then
+                If srw.Cells(R, srw.Range(&quot;Out_Gap&quot;).Column).Value &gt; 0 Then
+                    warning = warning + 1
+                    If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Gap in Layers of Protection greater than zero&quot;
+                        Else
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Gap in Layers of Protection greater than zero&quot;
+                    End If
+                End If
+            End If
+        End If
+        If lmw.Range(&quot;QC_2&quot;).Value = &quot;Yes&quot; Then
+            If srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column).Value = &quot;&quot; Then
+                warning = warning + 1
+                If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Analyze via LOPA? is blank&quot;
+                    Else
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Analyze via LOPA? is blank&quot;
+                End If
+            End If
+        End If
+        If lmw.Range(&quot;QC_13&quot;).Value = &quot;Yes&quot; Then
+            If srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column).Value = &quot;No&quot; And srw.Cells(R, srw.Range(&quot;Out_Comments&quot;).Column).Value = &quot;&quot; Then
+                warning = warning + 1
+                If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Explanation for not analyzing scenario is missing in notes field&quot;
+                    Else
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Explanation for not analyzing scenario is missing in notes field&quot;
+                End If
+            End If
+        End If
+        If lmw.Range(&quot;QC_3&quot;).Value = &quot;Yes&quot; Then
+            If srw.Cells(R, srw.Range(&quot;Out_Source&quot;).Column).Value = &quot;&quot; Then
+                warning = warning + 1
+                If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Scenario Source (Tool vs User) blank with potential incomplete calculation execution&quot;
+                    Else
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Scenario Source (Tool vs User) blank with potential incomplete calculation execution&quot;
+                End If
+            End If
+        End If
+        If lmw.Range(&quot;QC_4&quot;).Value = &quot;Yes&quot; Then
+        Select Case srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value
+            Case &quot;Eliminated&quot;
+                warning = warning + 1
+                If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Scenario eliminated but not deleted from workbook&quot;
+                    Else
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Scenario eliminated but not deleted from workbook&quot;
+                End If
+            Case &quot;Orphaned&quot;
+                warning = warning + 1
+                If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Equipment Table does not have entry for Equipment Tag - add equipment or delete scenario&quot;
+                    Else
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Equipment Table does not have entry for Equipment Tag - add equipment or delete scenario&quot;
+                End If
+            Case &quot;Update Failed&quot;
+                warning = warning + 1
+                If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Problem with User scenario inputs and scenario could not be updated&quot;
+                    Else
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Problem with User scenario inputs and scenario could not be updated&quot;
+                End If
+        End Select
+        End If
+        If lmw.Range(&quot;QC_5&quot;).Value = &quot;Yes&quot; Then
+            If srw.Cells(R, srw.Range(&quot;Out_Issues&quot;).Column).Value &lt;&gt; &quot;&quot; Then
+                warning = warning + 1
+                If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Issue to resolve not blank&quot;
+                    Else
+                    srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Issue to resolve not blank&quot;
+                End If
+            End If
+        End If
+        If lmw.Range(&quot;QC_6&quot;).Value = &quot;Yes&quot; Then
+            If InStr(1, UCase(srw.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Value), &quot;RELIEF&quot;, vbTextCompare) &gt; 0 Then
+                If srw.Cells(R, srw.Range(&quot;Out_IPL_5&quot;).Column).Value &gt; 0 Then
+                    warning = warning + 1
+                    If srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = &quot;Relief credit taken in relief discharge scenario&quot;
+                        Else
+                        srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Quality&quot;).Column).Value &amp; &quot;; Relief credit taken in relief discharge scenario&quot;
+                    End If
+                End If
+            End If
+        End If
+        R = R + 1
+    Next e
+    
+    Check_DowGEP_Inputs (True)
+    
+    If warning &gt; 0 Then
+        MsgBox warning &amp; &quot; quality control warnings.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Check &apos;Quality Control Warnings&apos; column.&quot;
+        Application.GoTo srw.Range(&quot;Out_Quality&quot;), True
+        Application.ScreenUpdating = True
+        Application.Calculation = xlCalculationAutomatic
+        Exit Sub
+    ElseIf check_blank &gt; 0 Then
+        MsgBox &quot;No LOPA quality control issues.  However, missing &quot; &amp; check_blank &amp; &quot; cell(s) of instrumented IPL information.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Check &apos;Export to DowGEP Errors&apos; column and red cells.&quot;
+        Application.GoTo srw.Range(&quot;Out_DowGEP&quot;), True
+    ElseIf check_length &gt; 0 Then
+        MsgBox &quot;No LOPA quality control issues.  However, character string of Sensor(s) + Final Control Element(s) exceed 240 characters for &quot; &amp; check_length &amp; &quot; IPL(s).&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Check &apos;Export to DowGEP Errors&apos; column and red cells.&quot;
+    Else
+        MsgBox &quot;CONGRATULATIONS!!!  No LOPA quality control or DowGEP issues found.&quot;
+    End If
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+End Sub
+Sub Check_DowGEP_Inputs(From_QC As Boolean)
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    
+    c = srw.Range(&quot;Out_Scenario_No&quot;).Column
+    Total = Application.WorksheetFunction.CountA(srw.Columns(c))
+    Total = Total - Application.WorksheetFunction.CountA(srw.Range(srw.Range(&quot;Out_Scenario_No&quot;), srw.Cells(1, c)))
+    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, 1), srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + Total, srw.UsedRange.Columns.Count)).Interior.ColorIndex = xlNone
+    
+    Total = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - 2
+    R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+    check_blank = 0
+    check_length = 0
+    For e = 1 To Total
+        srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot;
+        If srw.Cells(R, srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column).Value &gt; 0 And Not srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Eliminated&quot; And UCase(Trim(srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column).Value)) = &quot;YES&quot; And srw.Rows(R).Hidden = False Then
+            For IPL = 1 To 2
+                If srw.Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; IPL).Column).Value &gt; 0 Then
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Detail&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Detail&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL &amp; &quot; detail description blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL &amp; &quot; detail description blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Alarm&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Alarm&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL &amp; &quot; Associated DC or Alarm ID blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL &amp; &quot; Associated DC or Alarm ID blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Sensor&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Sensor&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL &amp; &quot; sensor blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL &amp; &quot; sensor ID blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_FinalElement&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_FinalElement&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL &amp; &quot; final element blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL &amp; &quot; final element blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_DelayTime&quot;).Column).Value = &quot;&quot; And srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Desc&quot;).Column).Value &lt;&gt; &quot;BPCS Independent of Initiating Event&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_DelayTime&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL &amp; &quot; MART blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL &amp; &quot; MART blank&quot;
+                        End If
+                    End If
+                    charlength = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Sensor&quot;).Column).Text &amp; srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Sensor2&quot;).Column).Text &amp; srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Sensor3&quot;).Column).Text &amp; srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_FinalElement&quot;).Column).Text &amp; srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_FinalElement2&quot;).Column).Text
+                    If Len(charlength) &gt; 240 Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Sensor&quot;).Column).Interior.ColorIndex = 3
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Sensor2&quot;).Column).Interior.ColorIndex = 3
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_Sensor3&quot;).Column).Interior.ColorIndex = 3
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_FinalElement&quot;).Column).Interior.ColorIndex = 3
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL &amp; &quot;_FinalElement2&quot;).Column).Interior.ColorIndex = 3
+                        check_length = check_length + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;Character length of sensors and final elements combined exceeds 240 for IPL&quot; &amp; IPL
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, Character length of sensors and final elements combined exceeds 240 for IPL&quot; &amp; IPL
+                        End If
+                    End If
+                End If
+            Next IPL
+            For IPL_SIS = 3 To 4
+                If srw.Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; IPL_SIS).Column).Value &gt; 0 Then
+                    If IPL_SIS = 3 And srw.Cells(R, srw.Range(&quot;Out_SIFA&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_SIFA&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;SIF A ID blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, SIF A ID blank&quot;
+                        End If
+                    End If
+                    If IPL_SIS = 4 And srw.Cells(R, srw.Range(&quot;Out_SIFB&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_SIFB&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;SIF B ID blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, SIF B ID blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Detail&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Detail&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL_SIS &amp; &quot; detail description blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL_SIS &amp; &quot; detail description blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Sensor&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Sensor&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL_SIS &amp; &quot; sensor blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL_SIS &amp; &quot; sensor blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_FinalElement&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_FinalElement&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL_SIS &amp; &quot; final element blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL_SIS &amp; &quot; final element blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_SetPoint&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_SetPoint&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL_SIS &amp; &quot; set point blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL_SIS &amp; &quot;set point blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_DelayTime&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_DelayTime&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL_SIS &amp; &quot; MART blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL_SIS &amp; &quot; MART blank&quot;
+                        End If
+                    End If
+                    If srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Other&quot;).Column).Value = &quot;&quot; Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Other&quot;).Column).Interior.ColorIndex = 3
+                        check_blank = check_blank + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;IPL&quot; &amp; IPL_SIS &amp; &quot; MALR blank&quot;
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, IPL&quot; &amp; IPL_SIS &amp; &quot; MALR blank&quot;
+                        End If
+                    End If
+                    charlength = srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Sensor&quot;).Column).Text &amp; srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Sensor2&quot;).Column).Text &amp; srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Sensor3&quot;).Column).Text &amp; srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_FinalElement&quot;).Column).Text &amp; srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_FinalElement2&quot;).Column).Text
+                    If Len(charlength) &gt; 240 Then
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Sensor&quot;).Column).Interior.ColorIndex = 3
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Sensor2&quot;).Column).Interior.ColorIndex = 3
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_Sensor3&quot;).Column).Interior.ColorIndex = 3
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_FinalElement&quot;).Column).Interior.ColorIndex = 3
+                        srw.Cells(R, srw.Range(&quot;Out_IPL&quot; &amp; IPL_SIS &amp; &quot;_FinalElement2&quot;).Column).Interior.ColorIndex = 3
+                        check_length = check_length + 1
+                        If srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;&quot; Then
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = &quot;Character length of sensors and final elements combined exceeds 240 for IPL&quot; &amp; IPL_SIS
+                            Else
+                            srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_DowGEP&quot;).Column).Value &amp; &quot;, Character length of sensors and final elements combined exceeds 240 for IPL&quot; &amp; IPL_SIS
+                        End If
+                    End If
+                End If
+            Next IPL_SIS
+        End If
+        R = R + 1
+    Next e
+    
+    If Not From_QC Then
+        If check_blank &gt; 0 Then
+            MsgBox &quot;Missing &quot; &amp; check_blank &amp; &quot; cell(s) of instrumented IPL information.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Check red cells on Scenario Results sheet, enter information, and try again.&quot;
+            Application.GoTo srw.Range(&quot;Out_DowGEP&quot;), True
+            Application.ScreenUpdating = True
+            Application.Calculation = xlCalculationAutomatic
+            Exit Sub
+        End If
+        
+        If check_length &gt; 0 Then
+            MsgBox &quot;Character string of Sensor(s) + Final Control Element(s) exceed 240 characters for &quot; &amp; check_length &amp; &quot; IPL(s).&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Check red cells on Scenario Results sheet, reduce characters, and try again.&quot;
+            Application.ScreenUpdating = True
+            Application.Calculation = xlCalculationAutomatic
+            Exit Sub
+        End If
+    End If
+End Sub
+
+&apos;  Author: Kevin Hersey
+&apos;  Last Revised: September 3, 2015
+&apos;  Last Revised By: Kevin Hersey
+&apos;
+Sub Write_to_DOWGep()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    filt = srw.AutoFilter.Range.Address
+    With srw.AutoFilter.Filters(srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column)
+        If .On = True Then
+            If .Operator = 0 Then
+                srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column, Criteria1:=.Criteria1, Operator:=xlAnd, Criteria2:=&quot;&gt;0&quot;
+            End If
+            Else
+            srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column, Criteria1:=&quot;&gt;0&quot;
+        End If
+    End With
+    filt = srw.AutoFilter.Range.Address
+    With srw.AutoFilter.Filters(srw.Range(&quot;Out_Compare&quot;).Column)
+        If .On = True Then
+            If .Operator = 0 Then
+                srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Compare&quot;).Column, Criteria1:=.Criteria1, Operator:=xlAnd, Criteria2:=&quot;&lt;&gt;Eliminated&quot;
+            End If
+            Else
+            srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Compare&quot;).Column, Criteria1:=&quot;&lt;&gt;Eliminated&quot;
+        End If
+    End With
+    filt = srw.AutoFilter.Range.Address
+    With srw.AutoFilter.Filters(srw.Range(&quot;Out_Credible&quot;).Column)
+        If .On = True Then
+            If .Operator = 0 Then
+                srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Credible&quot;).Column, Criteria1:=.Criteria1, Operator:=xlAnd, Criteria2:=&quot;Yes&quot;
+            End If
+            Else
+            srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Credible&quot;).Column, Criteria1:=&quot;Yes&quot;
+        End If
+    End With
+    Subtotal = Application.WorksheetFunction.Subtotal(3, srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - 2
+    If Subtotal &gt; 1000 Then
+        If MsgBox(&quot;The number of scenarios to be transferred will be &quot; &amp; Subtotal &amp; Chr(13) &amp; Chr(13) &amp; &quot;Are you sure you want to proceed?&quot;, vbYesNo, &quot;WARNING&quot;) = vbNo Then
+            Application.ScreenUpdating = True
+            Application.Calculation = xlCalculationAutomatic
+            Exit Sub
+        End If
+        ElseIf Subtotal = 0 Then
+        MsgBox &quot;The number of scenarios to be transferred is zero.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Scenarios with any of the following conditions will not be transferred:&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;- no BPCS, alarm, or SIS credits taken&quot; &amp; Chr(13) &amp; &quot;- scenario is marked &quot;&quot;Elminated&quot;&quot;&quot; &amp; Chr(13) &amp; &quot;- Analysis via LOPA is not &quot;&quot;Yes&quot;&quot;&quot; &amp; Chr(13) &amp; &quot;- scenario is filtered&quot;
+        Application.ScreenUpdating = True
+        Application.Calculation = xlCalculationAutomatic
+        Exit Sub
+    End If
+    
+    If MsgBox(&quot;Do you want RAST to first check if all required IPL information for DowGEP is entered?&quot;, vbYesNo) = vbYes Then
+        Check_DowGEP_Inputs (False)
+        If check_blank &gt; 0 Or check_length &gt; 0 Then
+            Exit Sub
+        End If
+    End If
+    
+    filetoopen = Application.GetOpenFilename(Title:=&quot;Select DowGEP Spreadsheet to Transfer Data Into&quot;, MultiSelect:=False)
+    If filetoopen &lt;&gt; False Then
+        On Error GoTo 100
+        Application.EnableEvents = True
+        Workbooks.Open Filename:=filetoopen, UpdateLinks:=0
+        On Error GoTo 0
+        DowGEP = ActiveWorkbook.Name
+        On Error GoTo 110
+        Set lsw = Workbooks(DowGEP).Worksheets(&quot;LOPA Scenario&quot;)
+        r_scenario = lsw.Range(&quot;Scenario_No&quot;).Row
+        If lsw.Range(&quot;Scenario_Desc&quot;).Row = 0 Then
+            GoTo 110
+        End If
+        On Error GoTo 0
+        If Application.WorksheetFunction.CountA((lsw.Rows(lsw.Range(&quot;Scenario_No&quot;).Row))) &gt; 4 Then
+            srw.Range(&quot;Out_Case_Evaluation&quot;).EntireColumn.Insert shift:=xlShiftToRight
+            c5 = srw.Range(&quot;Out_Case_Evaluation&quot;).Column
+            c1 = srw.Range(&quot;Out_Scenario_No&quot;).Column
+            r1 = srw.Range(&quot;Out_Case_Evaluation&quot;).Row + 1
+            R2 = srw.Range(&quot;Out_Scenario_No&quot;).End(xlDown).Row
+            If c5 &gt; 26 Then
+                c5_l = Chr(Int((c5 - 1) / 26) + 64) &amp; Chr(((c5 - 1) Mod 26) + 65)
+                Else
+                c5_l = Chr(c5 + 64)
+            End If
+            If c1 &gt; 26 Then
+                c1_l = Chr(Int((c1 - 1) / 26) + 64) &amp; Chr(((c1 - 1) Mod 26) + 65)
+                Else
+                c1_l = Chr(c1 + 64)
+            End If
+            Formula = &quot;=MATCH(&quot; &amp; c1_l &amp; r1 &amp; &quot;,&apos;[&quot; &amp; DowGEP &amp; &quot;]LOPA Scenario&apos;!$&quot; &amp; r_scenario &amp; &quot;:$&quot; &amp; r_scenario &amp; &quot;,false)&quot;
+            srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -1).Formula = Formula
+            srw.Activate
+            srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -1).AutoFill _
+                Destination:=Range(srw.Cells(r1, c5 - 1), srw.Cells(R2, c5 - 1)), Type:=xlFillDefault
+            srw.Calculate
+            Subtotal2 = Application.WorksheetFunction.Subtotal(2, srw.Columns(srw.Range(&quot;Out_Case_Evaluation&quot;).Column - 1))
+            srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(0, -1).EntireColumn.Delete
+        End If
+        DowGEP_Subtotal = Application.WorksheetFunction.Subtotal(3, lsw.Rows(lsw.Range(&quot;Scenario_No&quot;).Row))
+        lsw.Cells.ClearComments
+        lsw.Unprotect
+        R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+    
+        On Error Resume Next
+        currentFiltRange = srw.AutoFilter.Range.Address
+        srw.Range(currentFiltRange).AutoFilter field:=srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column, Criteria1:=&quot;&gt;0&quot;, Operator:=xlAnd
+        srw.Range(currentFiltRange).AutoFilter field:=srw.Range(&quot;Out_Compare&quot;).Column, Criteria1:=&quot;&lt;&gt;Eliminated&quot;, Operator:=xlAnd
+        srw.Range(currentFiltRange).AutoFilter field:=srw.Range(&quot;Out_Credible&quot;).Column, Criteria1:=&quot;Yes&quot;, Operator:=xlAnd
+        DowGEP_Scenarios = srw.AutoFilter.Range.Columns(1).SpecialCells(xlCellTypeVisible).Count - 1
+        blank_workbook = False
+        If lsw.Range(&quot;Start&quot;).Offset(0, 1).Value = &quot;&quot; Then
+            blank_workbook = True
+            Dim paste_columns As String
+            paste_columns = lsw.Range(lsw.Range(&quot;Start&quot;).Offset(0, 1), lsw.Range(&quot;Start&quot;).Offset(0, DowGEP_Scenarios)).EntireColumn.Address
+            lsw.Columns(&quot;C:C&quot;).Copy lsw.Columns(paste_columns)
+            lsw.Columns(paste_columns).EntireColumn.Hidden = False
+            c_to = lsw.Range(&quot;Start&quot;).Column
+        End If
+        scenario_count = 1
+        c = srw.Range(&quot;Out_Scenario_No&quot;).Column
+        Total = Application.WorksheetFunction.CountA(srw.Columns(c))
+        Total = Total - Application.WorksheetFunction.CountA(srw.Range(srw.Range(&quot;Out_Scenario_No&quot;), srw.Cells(1, c)))
+        For x = 1 To Total
+            If srw.Rows(R).Hidden = False Then
+                Application.StatusBar = &quot;Transferring scenario &quot; &amp; scenario_count &amp; &quot; of &quot; &amp; DowGEP_Scenarios
+                case_no = srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value
+                new_case = False
+                If blank_workbook = True Then
+                    c_to = c_to + 1
+                    Else
+                    If Not lsw.Rows(r_scenario).Find(What:=case_no, LookIn:=xlValues, lookat:=xlWhole) Is Nothing Then
+                        c_to = lsw.Rows(r_scenario).Find(What:=case_no, LookIn:=xlValues, lookat:=xlWhole).Column
+                        new_case = False
+                        Else
+                        c_to = lsw.Cells(1, lsw.Range(&quot;Scenario_No&quot;).Column + 1).End(xlToRight).Column + 1
+                        lsw.Columns(&quot;C:C&quot;).Copy lsw.Columns(c_to)
+                        lsw.Columns(c_to).EntireColumn.Hidden = False
+                        new_case = True
+                    End If
+                End If
+                
+                &apos; Transfer data from RAST Scenario Results to DowGEP LOPA Scenario sheet
+                
+                lsw.Cells(r_scenario, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value
+                
+                Description = srw.Cells(R, srw.Range(&quot;Out_Equip_Type&quot;).Column).Value
+                Description = Description &amp; &quot;, &quot;
+                Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column).Value
+                Select Case UCase(Left(srw.Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value, 1))
+                    Case &quot;A&quot;, &quot;E&quot;, &quot;I&quot;, &quot;O&quot;, &quot;U&quot;
+                    Description = Description &amp; &quot;, is involved in an &quot;
+                    Case Else
+                    Description = Description &amp; &quot;, is involved in a &quot;
+                End Select
+                HL_1_S = Len(Description)
+                Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value
+                HL_1_E = Len(Description)
+                Select Case UCase(Left(srw.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Value, 1))
+                    Case &quot;A&quot;, &quot;E&quot;, &quot;I&quot;, &quot;O&quot;, &quot;U&quot;
+                    Description = Description &amp; &quot; event resulting in an &quot;
+                    Case Else
+                    Description = Description &amp; &quot; event resulting in a &quot;
+                End Select
+                HL_2_S = Len(Description)
+                Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Value
+                HL_2_E = Len(Description)
+                
+                If srw.Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Value = &quot;Vapor Cloud Explosion&quot; Or _
+                    srw.Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Value = &quot;Building Explosion&quot; Or _
+                    srw.Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Value = &quot;Equipment Explosion&quot; Then
+                    &apos; Description detail with overpressure distance
+                    If Not srw.Cells(R, srw.Range(&quot;Out_Dist_Debris&quot;).Column).Value = &quot;&quot; Then
+                        Description = Description &amp; &quot; with a Distance to 1 psi Overpressure of &quot;
+                        Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_Dist_1psi&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Dist_1psi_Units&quot;).Column).Value
+                    End If
+                Else
+                    &apos; Description detail with chemical, release quantity, and release rate
+                    If srw.Cells(R, srw.Range(&quot;Out_AQ&quot;).Column).Value = &quot;&quot; Then
+                        Description = Description &amp; &quot; with subsequent&quot;
+                        Else
+                        Description = Description &amp; &quot; with subsequent &quot;
+                        Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_AQ&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_AQ_Units&quot;).Column).Value
+                    End If
+                    Description = Description &amp; &quot; airborne release of &quot;
+                    If IsNumeric(srw.Cells(R, srw.Range(&quot;Out_FK&quot;).Column).Value) Then
+                        If srw.Cells(R, srw.Range(&quot;Out_FK&quot;).Column).Value &lt; 1 Then
+                            Select Case UCase(Left(srw.Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value, 1))
+                                Case &quot;A&quot;, &quot;E&quot;, &quot;I&quot;, &quot;O&quot;, &quot;U&quot;
+                                Description = Description &amp; &quot;an &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value &amp; &quot; Mixture&quot;
+                                Case Else
+                                Description = Description &amp; &quot;a &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value &amp; &quot; Mixture&quot;
+                            End Select
+                            Else
+                            Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value
+                        End If
+                        Else
+                        Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Value
+                    End If
+                    If Not srw.Cells(R, srw.Range(&quot;Out_AR&quot;).Column).Value = &quot;&quot; Then
+                        Description = Description &amp; &quot; at an airborne release rate of &quot;
+                        Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_AR&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_AR_Units&quot;).Column).Value
+                    End If
+                End If
+                
+                Description = Description &amp; &quot;.&quot;
+                If Not srw.Cells(R, srw.Range(&quot;Out_Time_Relief&quot;).Column).Value = &quot;&quot; Then
+                    If InStr(1, srw.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Value, &quot;Rupture&quot;, vbTextCompare) &gt; 0 Then
+                        Description = Description &amp; &quot;  Estimated time to rupture is &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Time_Relief&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Time_Relief_Units&quot;).Column).Value &amp; &quot;.&quot;
+                        Else
+                        Description = Description &amp; &quot;  Estimated time to relief set pressure is &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Time_Relief&quot;).Column).Value &amp; &quot; &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Time_Relief_Units&quot;).Column).Value &amp; &quot;.&quot;
+                    End If
+                End If
+
+                Select Case UCase(Left(srw.Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Value, 1))
+                    Case &quot;A&quot;, &quot;E&quot;, &quot;I&quot;, &quot;O&quot;, &quot;U&quot;
+                    Description = Description &amp; &quot;  This incident could result in an &quot;
+                    Case Else
+                    Description = Description &amp; &quot;  This incident could result in a &quot;
+                End Select
+                HL_3_S = Len(Description)
+                Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Value
+                HL_3_E = Len(Description)
+                
+                If Not srw.Cells(R, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column).Value = &quot;&quot; Then
+                    Description = Description &amp; &quot; &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column).Value
+                    Else
+                    If Not srw.Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Value = &quot;&quot; Then
+                        If UCase(Left(srw.Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Value, 7)) = &quot;EXCEEDS&quot; Then
+                            Description = Description &amp; &quot; which &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Value
+                            Else
+                            Description = Description &amp; &quot; &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Value
+                        End If
+                    End If
+                End If
+                Description = Description &amp; &quot; with the potential for &quot;
+                If Not srw.Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Value = &quot;&quot; Then
+                    Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Value
+                    Else
+                    Description = Description &amp; srw.Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column).Value
+                End If
+                lsw.Cells(lsw.Range(&quot;Scenario_Desc&quot;).Row, c_to).Value = Description
+                
+                With lsw.Cells(lsw.Range(&quot;Scenario_Desc&quot;).Row, c_to).Characters(HL_1_S, HL_1_E - HL_1_S + 1).Font
+                    .Bold = True
+                    .ColorIndex = 55
+                End With
+                With lsw.Cells(lsw.Range(&quot;Scenario_Desc&quot;).Row, c_to).Characters(HL_2_S, HL_2_E - HL_2_S + 1).Font
+                    .Bold = True
+                    .ColorIndex = 3
+                End With
+                With lsw.Cells(lsw.Range(&quot;Scenario_Desc&quot;).Row, c_to).Characters(HL_3_S, HL_3_E - HL_3_S + 1).Font
+                    .Bold = True
+                    .ColorIndex = 43
+                End With
+
+                lsw.Cells(lsw.Range(&quot;Cause_Desc&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;Cause_Sensor&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_Sensor&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;Cause_Sensor2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_Sensor2&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;Cause_Sensor3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_Sensor3&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;Cause_Sensor4&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_Sensor4&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;Cause_Sensor5&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_Sensor5&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;Cause_FinalElement&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_FinalElement&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;Cause_FinalElement1&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_FinalElement1&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;Cause_FinalElement2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_FinalElement2&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;Cause_FinalElement3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_FinalElement3&quot;).Column).Text
+                
+                If srw.Cells(R, srw.Range(&quot;Out_IPL1_Desc&quot;).Column).Text = &quot;BPCS Independent of Initiating Event&quot; Then
+                    lsw.Cells(lsw.Range(&quot;IPL_1&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL_1&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_Alarm&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Alarm&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_Detail&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Detail&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_Sensor&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Sensor&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_Sensor2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Sensor2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_Sensor3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Sensor3&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_SetPoint&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_SetPoint&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_DelayTime&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_DelayTime&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_FinalElement&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_FinalElement&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_FinalElement2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_FinalElement2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_ALR&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_ALR&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_Other&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Other&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL1_LogicSolver&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_LogicSolver&quot;).Column).Text
+                    
+                    ElseIf Not srw.Cells(R, srw.Range(&quot;Out_IPL1_Desc&quot;).Column).Text = &quot;&quot; Then
+                    lsw.Cells(lsw.Range(&quot;IPL_2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL_1&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_Alarm&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Alarm&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_Detail&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Detail&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_Sensor&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Sensor&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_Sensor2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Sensor2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_Sensor3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Sensor3&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_SetPoint&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_SetPoint&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_DelayTime&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_DelayTime&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_FinalElement&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_FinalElement&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_FinalElement2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_FinalElement2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_ALR&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_ALR&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_Other&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_Other&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;IPL2_LogicSolver&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL1_LogicSolver&quot;).Column).Text
+                End If
+                
+                If srw.Cells(R, srw.Range(&quot;Out_IPL2_Desc&quot;).Column).Text = &quot;BPCS Independent of Initiating Event&quot; Then
+                    lsw.Cells(lsw.Range(&quot;BPCS2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL_2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_Alarm&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Alarm&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_Detail&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Detail&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_Sensor&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Sensor&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_Sensor2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Sensor2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_Sensor3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Sensor3&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_SetPoint&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_SetPoint&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_DelayTime&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_DelayTime&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_FinalElement&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_FinalElement&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_FinalElement2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_FinalElement2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_ALR&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_ALR&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_Other&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Other&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;BPCS2_LogicSolver&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_LogicSolver&quot;).Column).Text
+                    
+                    ElseIf Not srw.Cells(R, srw.Range(&quot;Out_IPL2_Desc&quot;).Column).Text = &quot;&quot; Then
+                    lsw.Cells(lsw.Range(&quot;Alarm2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL_2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_Alarm&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Alarm&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_Detail&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Detail&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_Sensor&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Sensor&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_Sensor2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Sensor2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_Sensor3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Sensor3&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_SetPoint&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_SetPoint&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_DelayTime&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_DelayTime&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_FinalElement&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_FinalElement&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_FinalElement2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_FinalElement2&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_ALR&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_ALR&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_Other&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_Other&quot;).Column).Text
+                    lsw.Cells(lsw.Range(&quot;Alarm2_LogicSolver&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL2_LogicSolver&quot;).Column).Text
+                End If
+                
+                lsw.Cells(lsw.Range(&quot;IPL_3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL_3&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_Alarm&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_SIFA&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_Detail&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_Detail&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_Sensor&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_Sensor&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_Sensor2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_Sensor2&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_Sensor3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_Sensor3&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_SetPoint&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_SetPoint&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_DelayTime&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_DelayTime&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_FinalElement&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_FinalElement&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_FinalElement2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_FinalElement2&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_Other&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_Other&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_Comment&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_Comment&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL3_LogicSolver&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL3_LogicSolver&quot;).Column).Text
+                
+                lsw.Cells(lsw.Range(&quot;IPL_3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL_3&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_Alarm&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_SIFB&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_Detail&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_Detail&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_Sensor&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_Sensor&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_Sensor2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_Sensor2&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_Sensor3&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_Sensor3&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_SetPoint&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_SetPoint&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_DelayTime&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_DelayTime&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_FinalElement&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_FinalElement&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_FinalElement2&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_FinalElement2&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_Other&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_Other&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_Comment&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_Comment&quot;).Column).Text
+                lsw.Cells(lsw.Range(&quot;IPL4_LogicSolver&quot;).Row, c_to).Value = srw.Cells(R, srw.Range(&quot;Out_IPL4_LogicSolver&quot;).Column).Text
+                
+                scenario_count = scenario_count + 1
+            End If
+            
+            R = R + 1
+            
+        Next x
+        lsw.Protect
+        With Workbooks(DowGEP)
+            .Activate
+            .Worksheets(&quot;LOPA Scenario&quot;).Activate
+            Range(&quot;B1&quot;).Select
+            ActiveWindow.ScrollColumn = 1
+            ActiveWindow.ScrollRow = 1
+            
+            R = .Worksheets(&quot;LOPA Scenario&quot;).Range(&quot;Header&quot;).Row + 1
+            Do While Not .Worksheets(&quot;LOPA Scenario&quot;).Cells(R, .Worksheets(&quot;LOPA Scenario&quot;).Range(&quot;Header&quot;).Column).Value = &quot;&quot;
+                If .Worksheets(&quot;LOPA Scenario&quot;).Rows(R).RowHeight &gt; 100 Then
+                    .Worksheets(&quot;LOPA Scenario&quot;).Rows(R).RowHeight = 100
+                End If
+                R = R + 1
+            Loop
+            .Worksheets(&quot;LOPA Scenario&quot;).Range(&quot;Scenario_Desc&quot;).RowHeight = 200
+            .Worksheets(&quot;LOPA Scenario&quot;).Range(&quot;Cause_Desc&quot;).RowHeight = 150
+        End With
+    End If
+    Application.Calculation = xlCalculationAutomatic
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Exit Sub
+100 MsgBox &quot;Error opening file.  Check that file is not already opened.&quot;
+    Application.Calculation = xlCalculationAutomatic
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Exit Sub
+110 MsgBox &quot;Could not find named ranges in DowGEP workbook selected.  Check that DowGEP workbook is the latest version.&quot;
+    Workbooks(DowGEP).Close savechanges:=False
+    Application.Calculation = xlCalculationAutomatic
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Exit Sub
+End Sub
+Sub Clear_Filters()
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    currentFiltRange = srw.AutoFilter.Range.Address
+    srw.Range(currentFiltRange).AutoFilter
+    srw.Range(currentFiltRange).AutoFilter
+End Sub
+Sub Duplicate_Scenario()
+          Dim Equipment As String, calc_result() As Double
+          Dim CausesArray() As String, IEF() As Integer, IncidentArray() As Boolean
+10        Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+20        Application.ScreenUpdating = False
+30        Application.Calculation = xlCalculationManual
+40        If srw.FilterMode = True Then
+50      filt = srw.AutoFilter.Range.Address
+60      srw.Range(filt).AutoFilter
+70      srw.Range(filt).AutoFilter
+80        End If
+90        If Not srw.Range(&quot;Out_Scenario_No&quot;).Offset(1, 0) = &quot;&quot; Then
+100     If ActiveCell.Row &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+110         If srw.Cells(ActiveCell.Row, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value = &quot;&quot; Then
+120             MsgBox &quot;Select a cell in the row of the scenario to duplicate.&quot;
+130             GoTo finish
+140             Else
+150             r1 = ActiveCell.Row
+160             Scenario_ID = Int(Application.WorksheetFunction.Max(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column))) + 1.01
+170             ActiveCell.Offset(1, 0).EntireRow.Insert
+180             Rows(r1).Copy Destination:=Rows(r1 + 1)
+190             r1 = r1 + 1
+200             srw.Cells(r1, srw.Range(&quot;Out_Scenario_No&quot;).Column) = Scenario_ID
+210             srw.Cells(r1, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Value = &quot;&quot;
+                &apos;added Nov 2023 to set the duplicate scenario as a User Scenario
+215             srw.Cells(r1, srw.Range(&quot;Out_Source&quot;).Column).Value = &quot;User&quot;
+220             Sort_Scenario_Results
+230             R = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) + srw.Range(&quot;Out_Scenario_No&quot;).Row - 2
+240             c = srw.UsedRange.Columns.Count
+&apos; 240             c = srw.Range(&quot;Out_New_Hazard&quot;).Column
+250             If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row + 1 Then
+260                 With srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, 1), srw.Cells(R, c))
+270                     .Borders(xlEdgeLeft).LineStyle = xlContinuous
+280                     .Borders(xlEdgeTop).LineStyle = xlContinuous
+290                     .Borders(xlEdgeBottom).LineStyle = xlContinuous
+300                     .Borders(xlEdgeRight).LineStyle = xlContinuous
+310                     .Borders(xlInsideVertical).LineStyle = xlContinuous
+320                     If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+330                         .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+340                     End If
+350                 End With
+360                 For Each calc In srw.Range(&quot;Out_Release_Calcs&quot;)
+370                     If UCase(Right(calc.Offset(0, 1).Name.Name, 5)) = &quot;UNITS&quot; Then
+380                         srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).Borders(xlEdgeRight).LineStyle = xlNone
+390                         srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).HorizontalAlignment = xlRight
+400                         srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column + 1), srw.Cells(R, calc.Column + 1)).HorizontalAlignment = xlLeft
+410                     End If
+420                 Next calc
+430             End If
+440             srw.Cells(r1, srw.Range(&quot;Out_Scenario_No&quot;).Column).Select
+450         End If
+460     End If
+470         End If
+
+finish:
+480       Application.StatusBar = False
+490       Application.Calculation = xlCalculationAutomatic
+500       Application.ScreenUpdating = True
+
+End Sub
+Sub Sort_Scenario_Results()
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    R = srw.UsedRange.Rows.Count
+    c = srw.UsedRange.Columns.Count
+    With srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row, 1), srw.Cells(R, c))
+        .Sort key1:=Range(&quot;Out_Scenario_No&quot;), Order1:=xlAscending, Header:= _
+        xlYes, OrderCustom:=1, MatchCase:=False, Orientation:=xlTopToBottom, _
+        DataOption1:=xlSortNormal
+        .Sort key1:=Range(&quot;Out_Incident&quot;), Order1:=xlAscending, Key2:=Range(&quot;Out_Cause&quot;) _
+        , order2:=xlAscending, key3:=Range(&quot;Out_Outcome&quot;), Order3:=xlAscending, Header:= _
+        xlYes, OrderCustom:=1, MatchCase:=False, Orientation:=xlTopToBottom, _
+        DataOption1:=xlSortNormal, DataOption2:=xlSortNormal, DataOption3:= _
+        xlSortNormal
+        .Sort key1:=Range(&quot;Out_Equip_Tag&quot;), Order1:=xlAscending, Key2:=Range(&quot;Out_Key_Chemical&quot;) _
+        , order2:=xlAscending, key3:=Range(&quot;Out_Scenario_Type&quot;), Order3:=xlAscending, Header:= _
+        xlYes, OrderCustom:=1, MatchCase:=False, Orientation:=xlTopToBottom, _
+        DataOption1:=xlSortNormal, DataOption2:=xlSortNormal, DataOption3:= _
+        xlSortNormal
+    End With
+End Sub
+
+Sub Modify_User_Scenario()
+10        Set usw = ThisWorkbook.Worksheets(&quot;User Scenario&quot;)
+20        Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+30        Set idw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+40        Set saw = ThisWorkbook.Worksheets(&quot;Scenario Analysis&quot;)
+50        Set rcw = ThisWorkbook.Worksheets(&quot;Release Calculations&quot;)
+60        Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+70        Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+80        Application.ScreenUpdating = False
+90        Application.Calculation = xlCalculationManual
+100       macrorunning = True
+110       R = ActiveCell.Row
+120       Range(&quot;Goto_from_User_Scenario&quot;).Value = 0
+130       user_input_error = False
+140       If Not srw.Cells(R, srw.Range(&quot;Out_Source&quot;).Column) = &quot;User&quot; Then
+150           MsgBox &quot;Current row not designated a user scenario.  Select any cell in row of user scenario.&quot;
+160           Else
+170           If Not srw.Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column).Value = mmw.Range(&quot;Equipment_Tag&quot;).Value Then
+180               MsgBox &quot;Equipment for current row not loaded.&quot; &amp; Chr(13) &amp; &quot;Load &apos;&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column).Value &amp; &quot;&apos; on Equipment Table sheet and then modify user scenario.&quot;
+190               Else
+200               r_eq = 1
+210               Load_User_Scenario
+220               usw.Range(&quot;Row_Modifying&quot;).Value = R
+230               ThisWorkbook.Worksheets(&quot;User Scenario&quot;).Visible = True
+240               For Each W In ThisWorkbook.Worksheets
+250                   If W.Name = &quot;User Scenario&quot; Then
+260                       W.Visible = True
+270                       Else
+280                       W.Visible = False
+290                   End If
+300               Next
+310               ActiveWindow.ScrollWorkbookTabs Position:=xlFirst
+320               Worksheets(&quot;User Scenario&quot;).Activate
+330               Worksheets(&quot;User Scenario&quot;).Range(&quot;User_Scenario_Type&quot;).Activate
+340               If user_input_error = True Then
+350                   MsgBox &quot;Problem with user scenario inputs selected.  Check and modify before saving.&quot;
+360               End If
+370           End If
+380       End If
+390       macrorunning = False
+400       Application.ScreenUpdating = True
+410       Application.Calculation = xlCalculationAutomatic
+End Sub
+Sub Load_User_Scenario()
+    Set usw = ThisWorkbook.Worksheets(&quot;User Scenario&quot;)
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    Set idw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+    Set saw = ThisWorkbook.Worksheets(&quot;Scenario Analysis&quot;)
+    Set rcw = ThisWorkbook.Worksheets(&quot;Release Calculations&quot;)
+    Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+    Clear_User_Scenario_Inputs
+    user_input_failed = False
+    usw.Range(&quot;User_Scenario_Type&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value
+    usw.Range(&quot;User_Cause&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).Value
+    usw.Range(&quot;User_Cause_Desc&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Value
+    usw.Range(&quot;User_Consequence_User&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Value
+    usw.Range(&quot;User_Outcome_Desc_User&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column).Value
+    usw.Range(&quot;User_POE_Desc&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).Value
+    usw.Range(&quot;User_POE_Entered&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Value
+    incident = srw.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Value
+    If incident = &quot;Vapor Vent&quot; Or incident = &quot;Vapor Relief Vent&quot; Then
+        Select Case srw.Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value
+            Case &quot;Excessive Heat Input - Heat Transfer&quot;
+            usw.Range(&quot;User_Incident_Entered&quot;).Value = siw.Range(&quot;Vapor_Incident_HT&quot;).Value &amp; &quot; - Heat Transfer&quot;
+            Case &quot;Excessive Heat Input - Mechanical&quot;
+            usw.Range(&quot;User_Incident_Entered&quot;).Value = siw.Range(&quot;Vapor_Incident_ME&quot;).Value &amp; &quot; - Mechanical Energy&quot;
+            Case &quot;Excessive Heat Input - Pool Fire Exposure&quot;
+            usw.Range(&quot;User_Incident_Entered&quot;).Value = siw.Range(&quot;Vapor_Incident_Fire&quot;).Value &amp; &quot; - Fire&quot;
+            Case &quot;Uncontrolled Reaction - Thermal Initiation&quot;
+            usw.Range(&quot;User_Incident_Entered&quot;).Value = siw.Range(&quot;Vapor_Incident_Rx&quot;).Value &amp; &quot; - Reaction&quot;
+            Case &quot;Uncontrolled Reaction - Fire Induced&quot;
+            usw.Range(&quot;User_Incident_Entered&quot;).Value = siw.Range(&quot;Vapor_Incident_Rx_Fire&quot;).Value &amp; &quot; - Reaction with Fire&quot;
+            Case &quot;Uncontrolled Reaction - Catalyst or Impurity&quot;
+            usw.Range(&quot;User_Incident_Entered&quot;).Value = siw.Range(&quot;Vapor_Incident_Rx_Cat&quot;).Value &amp; &quot; - Reaction with Catalyst&quot;
+            Case &quot;Uncontrolled Reaction - Pooling of Reactants&quot;
+            usw.Range(&quot;User_Incident_Entered&quot;).Value = siw.Range(&quot;Vapor_Incident_Rx_Pool&quot;).Value &amp; &quot; - Reaction with Pooling&quot;
+            Case &quot;Uncontrolled Reaction - Mis-Loading&quot;
+            usw.Range(&quot;User_Incident_Entered&quot;).Value = siw.Range(&quot;Vapor_Incident_Rx_ML&quot;).Value &amp; &quot; - Reaction with Mis-Loading&quot;
+        End Select
+        Else
+        usw.Range(&quot;User_Incident_Entered&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Value
+    End If
+    
+    usw.Range(&quot;User_Outcome&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Value
+    
+    &apos; Check that scenario components are still listed in the standard lists
+    
+    If siw.Range(&quot;Scenario_Type&quot;).Find(What:=srw.Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value, LookIn:=xlValues) Is Nothing Then
+        user_input_failed = True
+        srw.Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Interior.ColorIndex = 3
+        usw.Range(&quot;User_Scenario_Type&quot;).Value = &quot;&quot;
+    End If
+    If siw.Range(&quot;Initiating_Event&quot;).Find(What:=srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).Value, LookIn:=xlValues) Is Nothing Then
+        user_input_failed = True
+        srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).Interior.ColorIndex = 3
+        usw.Range(&quot;User_Cause&quot;).Value = &quot;&quot;
+    End If
+    If siw.Range(&quot;Incident_Explicit&quot;).Find(What:=usw.Range(&quot;User_Incident_Entered&quot;).Value, LookIn:=xlValues) Is Nothing Then
+        user_input_failed = True
+        srw.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Interior.ColorIndex = 3
+        usw.Range(&quot;User_Incident_Entered&quot;).Value = &quot;&quot;
+    End If
+    If saw.Range(&quot;Results_TF&quot;).Find(What:=srw.Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Value, LookIn:=xlValues) Is Nothing Then
+        user_input_failed = True
+        srw.Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Interior.ColorIndex = 3
+        usw.Range(&quot;User_Outcome&quot;).Value = &quot;&quot;
+    End If
+    If srw.Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Value &lt;&gt; &quot;&quot; Then
+        If saw.Range(&quot;Consequence_List1&quot;).Find(What:=srw.Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Value, LookIn:=xlValues) Is Nothing Then
+            If saw.Range(&quot;Consequence_List2&quot;).Find(What:=srw.Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Value, LookIn:=xlValues) Is Nothing Then
+                user_input_failed = True
+                srw.Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Interior.ColorIndex = 3
+                usw.Range(&quot;User_Consequence_User&quot;).Value = &quot;&quot;
+            End If
+        End If
+    End If
+    
+    If srw.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Value = &quot;USER DEFINED INCIDENT&quot; Then
+
+        ReDim calc_result(Application.WorksheetFunction.CountA(saw.Range(&quot;Results_Release_Calcs&quot;)))
+        ReDim calc_units(Application.WorksheetFunction.CountA(saw.Range(&quot;Results_Release_Calcs&quot;)))
+        W = 1
+        u = 1
+        For Each calc1 In srw.Range(&quot;Out_Release_Calcs&quot;)
+            If UCase(Right(calc1.Name.Name, 5)) = &quot;UNITS&quot; Then
+                u = u - 1
+                If Not IsError(srw.Cells(R, calc1.Column).Text) Then
+                    calc_units(u) = srw.Cells(R, calc1.Column).Text
+                    Else
+                    srw.Cells(R, calc1.Column).Interior.ColorIndex = 3
+                    user_input_failed = True
+                End If
+                u = u + 1
+            Else
+                If Not IsError(srw.Cells(R, calc1.Column).Text) Then
+                    calc_result(W) = srw.Cells(R, calc1.Column).Text
+                    Else
+                    srw.Cells(R, calc1.Column).Interior.ColorIndex = 3
+                    user_input_failed = True
+                End If
+                u = u + 1
+                W = W + 1
+            End If
+        Next calc1
+        W = 1
+        For Each calc2 In usw.Range(&quot;User_Value_In&quot;)
+            calc2.Value = calc_result(W)
+            W = W + 1
+        Next calc2
+        u = 1
+        For Each calc3 In usw.Range(&quot;User_Units_In&quot;)
+            calc3.Value = calc_units(u)
+            u = u + 1
+        Next calc3
+        usw.Calculate
+        W = 1
+        For Each calc4 In usw.Range(&quot;User_Value_Out&quot;)
+            calc_result(W) = calc4.Value
+            W = W + 1
+        Next calc4
+        W = 1
+        For Each calc5 In usw.Range(&quot;User_Release_Calcs_User&quot;)
+            If IsError(calc_result(W)) Then
+                calc5.Value = &quot;&quot;
+                srw.Cells(R, srw.Range(&quot;Out_Release_Calcs&quot;).Column + W - 1).Interior.ColorIndex = 3
+                user_input_failed = True
+                calc5.Value = &quot;&quot;
+                Else
+                calc5.Value = calc_result(W)
+            End If
+            W = W + 1
+        Next calc5
+    End If
+
+    Select Case usw.Range(&quot;User_Incident_Entered&quot;).Value
+        Case &quot;USER DEFINED HOLE SIZE&quot;, &quot;USER DEFINED HOLE SIZE (top of vessel)&quot;
+        If Not IsError(srw.Cells(R, srw.Range(&quot;Out_Hole&quot;).Column).Text) And Not srw.Cells(R, srw.Range(&quot;Out_Hole&quot;).Column).Text = &quot;&quot; Then
+            If Not IsError(srw.Cells(R, srw.Range(&quot;Out_Hole_Units&quot;).Column).Text) And Not srw.Cells(R, srw.Range(&quot;Out_Hole_Units&quot;).Column).Text = &quot;&quot; Then
+                usw.Range(&quot;User_Hole_In&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_Hole&quot;).Column).Value
+                usw.Range(&quot;User_Hole_Units_In&quot;) = srw.Cells(R, srw.Range(&quot;Out_Hole_Units&quot;).Column).Text
+                usw.Range(&quot;User_Temp_In&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_RelT&quot;).Column).Value
+                usw.Range(&quot;User_Press_In&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_RelP&quot;).Column).Value
+                usw.Range(&quot;User_Press_Units_In&quot;) = srw.Cells(R, srw.Range(&quot;Out_RelP_Units&quot;).Column).Text
+                usw.Calculate
+                usw.Range(&quot;User_Defined_Input&quot;).Value = usw.Range(&quot;User_Hole_Out&quot;).Value
+                usw.Range(&quot;User_Defined_Input2&quot;).Value = usw.Range(&quot;User_Temp_Out&quot;).Value
+                usw.Range(&quot;User_Defined_Input3&quot;).Value = usw.Range(&quot;User_Press_Out&quot;).Value
+                Else
+                srw.Cells(R, srw.Range(&quot;Out_Hole_Units&quot;).Column).Interior.ColorIndex = 3
+                user_input_failed = True
+                usw.Range(&quot;User_Defined_Input&quot;).Value = &quot;&quot;
+            End If
+            Else
+            srw.Cells(R, srw.Range(&quot;Out_Hole&quot;).Column).Interior.ColorIndex = 3
+            user_input_failed = True
+            usw.Range(&quot;User_Defined_Input&quot;).Value = &quot;&quot;
+        End If
+        Case &quot;USER DEFINED LEAK RATE&quot;, &quot;USER DEFINED VAPOR VENT RATE at Relief Temp&quot;
+        If Not IsError(srw.Cells(R, srw.Range(&quot;Out_TRR&quot;).Column).Text) And Not srw.Cells(R, srw.Range(&quot;Out_TRR&quot;).Column).Text = &quot;&quot; Then
+            If Not IsError(srw.Cells(R, srw.Range(&quot;Out_TRR_Units&quot;).Column).Text) And Not srw.Cells(R, srw.Range(&quot;Out_TRR_Units&quot;).Column).Text = &quot;&quot; Then
+                usw.Range(&quot;User_Rate_In&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_TRR&quot;).Column).Value
+                usw.Range(&quot;User_Rate_Units_In&quot;) = srw.Cells(R, srw.Range(&quot;Out_TRR_Units&quot;).Column).Text
+                usw.Range(&quot;User_Temp_In&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_RelT&quot;).Column).Value
+                usw.Range(&quot;User_Press_In&quot;).Value = srw.Cells(R, srw.Range(&quot;Out_RelP&quot;).Column).Value
+                usw.Range(&quot;User_Press_Units_In&quot;) = srw.Cells(R, srw.Range(&quot;Out_RelP_Units&quot;).Column).Text
+                usw.Calculate
+                usw.Range(&quot;User_Defined_Input&quot;).Value = usw.Range(&quot;User_Rate_Out&quot;).Value
+                usw.Range(&quot;User_Defined_Input2&quot;).Value = usw.Range(&quot;User_Temp_Out&quot;).Value
+                usw.Range(&quot;User_Defined_Input3&quot;).Value = usw.Range(&quot;User_Press_Out&quot;).Value
+                Else
+                srw.Cells(R, srw.Range(&quot;Out_TRR_Units&quot;).Column).Interior.ColorIndex = 3
+                user_input_failed = True
+                usw.Range(&quot;User_Defined_Input&quot;).Value = &quot;&quot;
+            End If
+            Else
+            srw.Cells(R, srw.Range(&quot;Out_TRR&quot;).Column).Interior.ColorIndex = 3
+            user_input_failed = True
+            usw.Range(&quot;User_Defined_Input&quot;).Value = &quot;&quot;
+        End If
+        Case &quot;USER DEFINED INCIDENT&quot;
+        If saw.Range(&quot;Consequence&quot;).Find(What:=srw.Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Value, LookIn:=xlValues) Is Nothing Then
+            user_input_failed = True
+            srw.Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Interior.ColorIndex = 3
+        End If
+        Application.Calculate
+    End Select
+    
+    usw.Range(&quot;User_Clear1&quot;).Value = &quot;&quot;
+        
+    &apos; after loading user calc inputs, calculate and see if consequence is calculated, if not flag Incident/Outcome combination as not valid
+        
+    Application.Calculate
+    
+    If IsError(usw.Range(&quot;User_IEF&quot;)) Then
+        srw.Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Interior.ColorIndex = 3
+        user_input_error = True
+    End If
+    If IsError(usw.Range(&quot;User_PI&quot;)) Then
+        srw.Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Interior.ColorIndex = 3
+        user_input_error = True
+    End If
+    If IsError(usw.Range(&quot;User_TEF&quot;)) Then
+        srw.Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Interior.ColorIndex = 3
+        user_input_error = True
+    End If
+    If IsError(usw.Range(&quot;User_POE&quot;)) Then
+        srw.Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Interior.ColorIndex = 3
+        user_input_error = True
+    End If
+    If IsError(usw.Range(&quot;User_TF&quot;)) Then
+        srw.Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Interior.ColorIndex = 3
+        user_input_error = True
+        ElseIf usw.Range(&quot;User_TF&quot;) = &quot;&quot; Then
+        srw.Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Interior.ColorIndex = 3
+        user_input_error = True
+    End If
+    
+    If user_input_failed = True Then
+        user_input_error = True
+    End If
+End Sub
+
+
+Sub Create_User_Scenario_from_Scenario_List()
+    macrorunning = True
+    Application.ScreenUpdating = False
+    Range(&quot;Goto_from_User_Scenario&quot;).Value = 1
+    Create_User_Scenario
+    Range(&quot;Goto_from_User_Scenario&quot;).Activate
+    Application.ScreenUpdating = True
+    macrorunning = False
+End Sub
+Sub Create_User_Scenario_from_Scenario_Results()
+    macrorunning = True
+    Application.ScreenUpdating = False
+    Range(&quot;Goto_from_User_Scenario&quot;).Value = 0
+    Create_User_Scenario
+    Range(&quot;Goto_from_User_Scenario&quot;).Activate
+    Application.ScreenUpdating = True
+    macrorunning = False
+End Sub
+Sub Create_User_Scenario()
+10        If macrorunning = False Then
+20            Application.ScreenUpdating = False
+30        End If
+40        Worksheets(&quot;User Scenario&quot;).Visible = True
+50        ThisWorkbook.Worksheets(&quot;User Scenario&quot;).Visible = True
+310       ActiveWindow.ScrollWorkbookTabs Position:=xlFirst
+320       Clear_User_Scenario_Inputs
+330       Worksheets(&quot;User Scenario&quot;).Activate
+340       Worksheets(&quot;User Scenario&quot;).Range(&quot;User_Scenario_Type&quot;).Activate
+350       If macrorunning = False Then
+360           Application.ScreenUpdating = True
+370       End If
+End Sub
+Sub Cancel_User_Scenario()
+10        If macrorunning = False Then
+20            Application.ScreenUpdating = False
+30        End If
+40        Set usw = ThisWorkbook.Worksheets(&quot;User Scenario&quot;)
+50        usw.Range(&quot;User_Scenario_Type&quot;).Value = &quot;&quot;
+60        usw.Range(&quot;User_Cause&quot;).Value = &quot;&quot;
+70        usw.Range(&quot;User_Cause_Desc&quot;).Value = &quot;&quot;
+80        usw.Range(&quot;User_Incident_Entered&quot;).Value = &quot;&quot;
+90        usw.Range(&quot;User_Defined_Input&quot;).Value = &quot;&quot;
+100       usw.Range(&quot;User_Outcome&quot;).Value = &quot;&quot;
+110       usw.Range(&quot;User_Outcome_Desc_User&quot;).Value = &quot;&quot;
+120       usw.Range(&quot;User_Consequence_User&quot;).Value = &quot;&quot;
+130       usw.Range(&quot;User_Release_Calcs_User&quot;).Value = &quot;&quot;
+          
+140       usw.Range(&quot;User_Value_In&quot;).Value = &quot;&quot;
+150       usw.Range(&quot;User_Units_In&quot;).Value = &quot;&quot;
+160       usw.Range(&quot;Row_Modifying&quot;).Value = &quot;&quot;
+          
+170       ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Visible = True
+180       ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Visible = True
+190       ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Visible = True
+200       ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Visible = True
+210       ThisWorkbook.Worksheets(&quot;Release Calculations&quot;).Visible = True
+220       ThisWorkbook.Worksheets(&quot;Scenario List&quot;).Visible = True
+230       ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Visible = True
+240       ThisWorkbook.Worksheets(&quot;Input Guidance&quot;).Visible = True
+250       ThisWorkbook.Worksheets(&quot;Input Error Check&quot;).Visible = True
+260       ThisWorkbook.Worksheets(&quot;Relief Effluent&quot;).Visible = True
+270       ThisWorkbook.Worksheets(&quot;Introduction&quot;).Visible = True
+280       ThisWorkbook.Worksheets(&quot;Plant Layout&quot;).Visible = True
+290       ThisWorkbook.Worksheets(&quot;FEI &amp; CEI&quot;).Visible = True
+300       ThisWorkbook.Worksheets(&quot;Hazards &amp; Consequences&quot;).Visible = True
+310       ThisWorkbook.Worksheets(&quot;MART_MALR&quot;).Visible = True
+340       ThisWorkbook.Worksheets(&quot;Pool Fire Frequency&quot;).Visible = True
+350       ThisWorkbook.Worksheets(&quot;Risk Summary&quot;).Visible = True
+370       ThisWorkbook.Worksheets(&quot;Process Conditions&quot;).Visible = True
+380       ThisWorkbook.Worksheets(&quot;LOPA Menu&quot;).Visible = True
+390       ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Visible = True
+400       ThisWorkbook.Worksheets(&quot;User Scenario&quot;).Visible = False
+410       ThisWorkbook.Worksheets(&quot;IPL List&quot;).Visible = True
+420       ThisWorkbook.Worksheets(&quot;Study Parameters&quot;).Visible = True
+          
+430       ActiveWindow.ScrollWorkbookTabs Position:=xlFirst
+440       If Range(&quot;Goto_from_User_Scenario&quot;).Value = 1 Then
+450           Worksheets(&quot;Scenario List&quot;).Activate
+460           Else
+470           Worksheets(&quot;Scenario Results&quot;).Activate
+480       End If
+490       If macrorunning = False Then
+500           Application.ScreenUpdating = True
+510       End If
+End Sub
+Sub Save_Scenario()
+    Add_Custom_Scenario (True)
+End Sub
+Sub Add_Custom_Scenario(From_Save_Scenario_Button)
+    Dim Equipment As String, calc_result() As String, incident_row As Integer, lastrow As Integer
+    Dim CausesArray() As String, IEF() As Integer, IncidentArray() As Boolean
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    Set idw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+    Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+    Set saw = ThisWorkbook.Worksheets(&quot;Scenario Analysis&quot;)
+    Set usw = ThisWorkbook.Worksheets(&quot;User Scenario&quot;)
+    Set rcw = ThisWorkbook.Worksheets(&quot;Release Calculations&quot;)
+    Set scw = ThisWorkbook.Worksheets(&quot;Special Calcs&quot;)
+    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+    ReDim calc_result(Application.WorksheetFunction.CountA(saw.Range(&quot;Results_Release_Calcs&quot;)))
+    Application.Calculate
+    If From_Save_Scenario_Button = True Then
+        If Range(&quot;User_Scenario_Type&quot;).Value = &quot;&quot; Then
+            MsgBox &quot;No Scenario Type Selected.&quot;
+            Exit Sub
+        End If
+        If Range(&quot;User_Cause&quot;).Value = &quot;&quot; Then
+            MsgBox &quot;No Initiating Event Selected.&quot;
+            Exit Sub
+        End If
+        If Range(&quot;User_Incident_Entered&quot;).Value = &quot;&quot; Then
+            MsgBox &quot;No Incident Type Selected.&quot;
+            Exit Sub
+        End If
+        If Range(&quot;User_Outcome&quot;).Value = &quot;&quot; Then
+            MsgBox &quot;No Outcome Selected.&quot;
+            Exit Sub
+        End If
+        If Not IsNumeric(Range(&quot;User_TF&quot;)) Then
+            MsgBox &quot;No Target Factor, select Incident/Outcome pair with target factor or enter User Defined Incident.&quot;
+            Exit Sub
+        End If
+        Application.ScreenUpdating = False
+        Application.Calculation = xlCalculationManual
+        If srw.FilterMode = True Then
+            currentFiltRange = srw.AutoFilter.Range.Address
+            srw.Range(currentFiltRange).AutoFilter
+            srw.Range(currentFiltRange).AutoFilter
+        End If
+    End If
+    
+    macrorunning = True
+
+    If usw.Range(&quot;Row_Modifying&quot;).Value = &quot;&quot; Then
+        User_Scenario_Change = &quot;New&quot;
+    Else
+        User_Scenario_Change = &quot;Modifying&quot;
+    End If
+    
+    If User_Scenario_Change = &quot;Modifying&quot; Then
+        R = usw.Range(&quot;Row_Modifying&quot;).Value
+        srw.Rows(R).Interior.ColorIndex = xlNone
+        srw.Rows(R).ClearComments
+    Else
+        If srw.Range(&quot;Out_Scenario_No&quot;).Offset(1, 0).Value = &quot;&quot; Then
+            R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+            srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value = 1.01
+        Else
+            If Val(Application.Version) &lt; 12 Then
+                lastrow = srw.Cells(65536, srw.Range(&quot;Out_Scenario_No&quot;).Column).End(xlUp).Row
+            Else
+                lastrow = srw.UsedRange.Rows.Count
+            End If
+            filt = srw.AutoFilter.Range.Address
+            srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Equip_Tag&quot;).Column, Criteria1:=usw.Range(&quot;User_Equip_Tag&quot;).Value
+            r_Equip = srw.Range(&quot;Out_Scenario_No&quot;).End(xlDown).Row
+            srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Scenario_Type&quot;).Column, Criteria1:=usw.Range(&quot;User_Scenario_Type&quot;).Value
+            srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Incident&quot;).Column, Criteria1:=usw.Range(&quot;User_Incident&quot;).Value
+            srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Outcome&quot;).Column, Criteria1:=usw.Range(&quot;User_Outcome&quot;).Value
+            r_scenario = srw.Range(&quot;Out_Scenario_No&quot;).End(xlDown).Row
+            If r_scenario &gt; lastrow Or r_Equip &gt; lastrow Then
+                On Error Resume Next
+                If srw.FilterMode = True Then
+                    filt = srw.AutoFilter.Range.Address
+                    srw.Range(filt).AutoFilter
+                    srw.Range(filt).AutoFilter
+                End If
+                On Error GoTo 0
+                R = srw.Range(&quot;Out_Scenario_No&quot;).End(xlDown).Row + 1
+                srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value = Int(Application.WorksheetFunction.Max(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column))) + 1.01
+            Else
+                x_s = r_scenario
+                x_e = srw.AutoFilter.Range.Offset(1).SpecialCells(xlCellTypeVisible)(1).Row
+                new_scenario_no = 0
+                For r_no = x_e To x_s
+                    If srw.Rows(r_no).Hidden = False Then
+                        If srw.Cells(r_no, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value &gt; new_scenario_no Then
+                            new_scenario_no = srw.Cells(r_no, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value
+                        End If
+                    End If
+                Next r_no
+          
+                On Error Resume Next
+                If srw.FilterMode = True Then
+                    filt = srw.AutoFilter.Range.Address
+                    srw.Range(filt).AutoFilter
+                    srw.Range(filt).AutoFilter
+                End If
+                On Error GoTo 0
+    
+                srw.Cells(r_scenario, 1).Offset(1, 0).EntireRow.Insert
+                R = r_scenario + 1
+                srw.Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value = new_scenario_no + 0.01
+            End If
+        End If
+    End If
+    
+    changed = 0
+    With srw
+        If User_Scenario_Change = &quot;New&quot; Then
+            .Cells(R, srw.Range(&quot;Out_Plant_Section&quot;).Column) = ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Plant_Section&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column) = usw.Range(&quot;User_Equip_Tag&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Equip_Type&quot;).Column) = usw.Range(&quot;User_Equip_Type&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column) = usw.Range(&quot;User_Key_Chemical&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column) = usw.Range(&quot;User_Scenario_Type&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column) = usw.Range(&quot;User_Cause&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column) = usw.Range(&quot;User_Cause_Desc&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Incident&quot;).Column) = usw.Range(&quot;User_Incident&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column) = usw.Range(&quot;User_Outcome&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column) = usw.Range(&quot;User_Consequence_User&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column) = usw.Range(&quot;User_Outcome_Desc_User&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column) = usw.Range(&quot;User_Outcome_Desc&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column) = usw.Range(&quot;User_Consequence_Program&quot;).Value
+
+            W = 1
+            incident_row = saw.Range(&quot;Results_Incident&quot;).Find(What:=usw.Range(&quot;User_Incident_Entered&quot;).Value, LookIn:=xlValues).Row
+            For Each calc In saw.Range(&quot;Results_Release_Calcs&quot;)
+                If Not IsError(saw.Cells(incident_row, calc.Column)) Then
+                    calc_result(W) = saw.Cells(incident_row, calc.Column).Value
+                    Else
+                    calc_result(W) = &quot;&quot;
+                End If
+                W = W + 1
+            Next calc
+            W = 1
+            For Each calc In srw.Range(&quot;Out_Release_Calcs&quot;)
+                srw.Cells(R, calc.Column) = calc_result(W)
+                W = W + 1
+            Next calc
+            
+            .Cells(R, srw.Range(&quot;Out_TF&quot;).Column) = usw.Range(&quot;User_TF&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column) = usw.Range(&quot;User_IEF&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column) = usw.Range(&quot;User_TEF&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_PI&quot;).Column) = usw.Range(&quot;User_PI&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column) = usw.Range(&quot;User_PI_Desc&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column) = usw.Range(&quot;User_PI_Detail&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column) = usw.Range(&quot;User_EF_Desc&quot;).Value
+            .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column) = usw.Range(&quot;User_EF_Detail&quot;).Value
+            Select Case UCase(ThisWorkbook.Worksheets(&quot;Process Conditions&quot;).Range(&quot;Operating_Time&quot;).Text)
+                Case &quot;GREATER THAN 10%&quot;
+                    Time_at_Risk = &quot;In Operation &gt; 10%&quot;
+                Case &quot;LESS THAN 10%&quot;
+                    Time_at_Risk = &quot;In Operation &lt; 10%&quot;
+                Case &quot;LESS THAN 1% &amp; 1/QTR&quot;
+                    Time_at_Risk = &quot;In Operation &lt; 1% and Occurs &lt; 1/Qtr&quot;
+            End Select
+            If InStr(1, usw.Range(&quot;User_Cause&quot;).Value, &quot;Human Failure&quot;, vbTextCompare) &gt; 0 Then
+                Time_at_Risk2 = &quot;None&quot;
+            Else
+                Time_at_Risk2 = Time_at_Risk
+            End If
+            .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column) = Time_at_Risk2
+            .Cells(R, srw.Range(&quot;Out_Source&quot;).Column) = &quot;User&quot;
+            .Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value = &quot;New&quot;
+        Else
+            If Not .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column) = usw.Range(&quot;User_Key_Chemical&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column) = usw.Range(&quot;User_Key_Chemical&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column) = usw.Range(&quot;User_Scenario_Type&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column) = usw.Range(&quot;User_Scenario_Type&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column) = usw.Range(&quot;User_Cause&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column) = usw.Range(&quot;User_Cause&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column) = usw.Range(&quot;User_Cause_Desc&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column) = usw.Range(&quot;User_Cause_Desc&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_Incident&quot;).Column) = usw.Range(&quot;User_Incident&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Incident&quot;).Column) = usw.Range(&quot;User_Incident&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column) = usw.Range(&quot;User_Outcome&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column) = usw.Range(&quot;User_Outcome&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column) = usw.Range(&quot;User_Consequence_Program&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column) = usw.Range(&quot;User_Consequence_Program&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column) = usw.Range(&quot;User_Outcome_Desc&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column) = usw.Range(&quot;User_Outcome_Desc&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column) = usw.Range(&quot;User_Outcome_Desc_User&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column) = usw.Range(&quot;User_Outcome_Desc_User&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Outcome_Desc_User&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column) = usw.Range(&quot;User_Consequence_User&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column) = usw.Range(&quot;User_Consequence_User&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_Consequence_User&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            
+            W = 1
+            incident_row = saw.Range(&quot;Results_Incident&quot;).Find(What:=usw.Range(&quot;User_Incident_Entered&quot;).Value, LookIn:=xlValues).Row
+            For Each calc In saw.Range(&quot;Results_Release_Calcs&quot;)
+                If Not IsError(saw.Cells(incident_row, calc.Column)) Then
+                    calc_result(W) = saw.Cells(incident_row, calc.Column).Value
+                    Else
+                    calc_result(W) = vbNullString
+                End If
+                W = W + 1
+            Next calc
+            W = 1
+            For Each calc In .Range(&quot;Out_Release_Calcs&quot;)
+                If Not .Cells(R, calc.Column) = calc_result(W) Then
+                   .Cells(R, calc.Column).AddComment.Text &quot;Old Value: &quot; &amp; Application.WorksheetFunction.Text(.Cells(R, calc.Column).Value, &quot;0.0000&quot;)
+                   .Cells(R, calc.Column) = calc_result(W)
+                   .Cells(R, calc.Column).Interior.ColorIndex = 35
+                   changed = changed + 1
+                End If
+                W = W + 1
+            Next calc
+            
+            If Not .Cells(R, srw.Range(&quot;Out_TF&quot;).Column) = usw.Range(&quot;User_TF&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_TF&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_TF&quot;).Column) = usw.Range(&quot;User_TF&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column) = usw.Range(&quot;User_IEF&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column) = usw.Range(&quot;User_IEF&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column) = usw.Range(&quot;User_TEF&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column) = usw.Range(&quot;User_TEF&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_PI&quot;).Column) = usw.Range(&quot;User_PI&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_PI&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_PI&quot;).Column) = usw.Range(&quot;User_PI&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column) = usw.Range(&quot;User_PI_Desc&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column) = usw.Range(&quot;User_PI_Desc&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column) = usw.Range(&quot;User_PI_Detail&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column) = usw.Range(&quot;User_PI_Detail&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column) = usw.Range(&quot;User_EF_Desc&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column) = usw.Range(&quot;User_EF_Desc&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column) = usw.Range(&quot;User_EF_Detail&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column) = usw.Range(&quot;User_EF_Detail&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If Not .Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Value = usw.Range(&quot;User_POE&quot;).Value Then
+                .Cells(R, srw.Range(&quot;Out_POE&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Text
+                .Cells(R, srw.Range(&quot;Out_POE&quot;).Column) = usw.Range(&quot;User_POE&quot;).Value
+                .Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Interior.ColorIndex = 35
+                changed = changed + 1
+            End If
+            If usw.Range(&quot;User_POE_Overwritten&quot;).Value = &quot;No&quot; Then
+                Select Case UCase(ThisWorkbook.Worksheets(&quot;Process Conditions&quot;).Range(&quot;Operating_Time&quot;).Text)
+                    Case &quot;GREATER THAN 10%&quot;
+                        Time_at_Risk = &quot;In Operation &gt; 10%&quot;
+                    Case &quot;LESS THAN 10%&quot;
+                        Time_at_Risk = &quot;In Operation &lt; 10%&quot;
+                    Case &quot;LESS THAN 1% &amp; 1/QTR&quot;
+                        Time_at_Risk = &quot;In Operation &lt; 1% and Occurs &lt; 1/Qtr&quot;
+                End Select
+                If InStr(1, usw.Range(&quot;User_Cause&quot;).Value, &quot;Human Failure&quot;, vbTextCompare) &gt; 0 Then
+                    Time_at_Risk2 = &quot;None&quot;
+                    Else
+                    Time_at_Risk2 = Time_at_Risk
+                End If
+                If Not .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column) = Time_at_Risk2 Then
+                    .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).Text
+                    .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column) = Time_at_Risk2
+                    .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).Interior.ColorIndex = 35
+                    changed = changed + 1
+                End If
+            End If
+            If changed = 0 Then
+                .Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Same&quot;
+                Else
+                .Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Revised&quot;
+            End If
+        End If
+        srw.Cells(R, srw.Range(&quot;Out_TF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,0,&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+        srw.Cells(R, srw.Range(&quot;Out_PI_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,&quot;&quot;&quot;&quot;,&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+        srw.Cells(R, srw.Range(&quot;Out_TEF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,&quot;&quot;&quot;&quot;,&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+        srw.Cells(R, srw.Range(&quot;Out_LPR&quot;).Column).Formula = &quot;=&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_TF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+            &quot;-SUM(&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+            &quot;,&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_PI_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+            &quot;,&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_TEF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+            &quot;,&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+        ipl_formula = &quot;&quot;
+        For IPL = 1 To 8
+            If IPL = 1 Then
+                ipl_formula = &quot;-SUM(&quot; &amp; .Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; IPL).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+                Else
+                ipl_formula = ipl_formula &amp; &quot;+&quot; &amp; .Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; IPL).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+            End If
+        Next IPL
+        .Cells(R, srw.Range(&quot;Out_Gap&quot;).Column).Formula = &quot;=&quot; &amp; .Cells(R, srw.Range(&quot;Out_LPR&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; ipl_formula &amp; &quot;)&quot;
+        srw.Cells(R, srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column).Formula = &quot;=&quot; &amp; _
+            srw.Cells(R, srw.Range(&quot;Out_IPL_1&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+            &quot;+&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_2&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+            &quot;+&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_3&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+            &quot;+&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_4&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+        new_ipl_formula = vbNullString
+        new_ipl_formula = &quot;COUNTIF(&quot;
+        new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+        new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+        new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+        new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;Proposed&quot;&quot;)+COUNTIF(&quot;
+        new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+        new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+        new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+        new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;In Progress&quot;&quot;)&quot;
+        srw.Cells(R, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+        srw.Cells(R, srw.Range(&quot;Out_New_IPL&quot;).Column).Formula = &quot;=&quot; &amp; new_ipl_formula
+        srw.Cells(R, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+        With srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column).Validation
+            .Delete
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
+            xlBetween, Formula1:=&quot;Yes,No&quot;
+            .IgnoreBlank = True
+            .InCellDropdown = True
+            .InputTitle = &quot;&quot;
+            .ErrorTitle = &quot;&quot;
+            .InputMessage = &quot;&quot;
+            .ErrorMessage = &quot;&quot;
+            .ShowInput = True
+            .ShowError = True
+        End With
+        srw.Cells(R, srw.Range(&quot;Out_Last_Version&quot;).Column).Value = srw.Range(&quot;Version&quot;).Value
+        srw.Cells(R, srw.Range(&quot;Out_Last_Calc_Date&quot;).Column).Value = Now
+    End With
+    
+    If From_Save_Scenario_Button = True Then
+    
+        srw.Activate
+        R2 = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) + srw.Range(&quot;Out_Scenario_No&quot;).Row - 2
+        c2 = srw.UsedRange.Columns.Count
+&apos;        c2 = srw.Range(&quot;Out_New_Hazard&quot;).Column
+        If R2 &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row + 1 Then
+            With srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, 1), srw.Cells(R2, c2))
+                .Borders(xlEdgeLeft).LineStyle = xlContinuous
+                .Borders(xlEdgeTop).LineStyle = xlContinuous
+                .Borders(xlEdgeBottom).LineStyle = xlContinuous
+                .Borders(xlEdgeRight).LineStyle = xlContinuous
+                .Borders(xlInsideVertical).LineStyle = xlContinuous
+                If R2 &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+                    .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+                End If
+            End With
+            For Each calc In srw.Range(&quot;Out_Release_Calcs&quot;)
+                If UCase(Right(calc.Offset(0, 1).Name.Name, 5)) = &quot;UNITS&quot; Then
+                    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R2, calc.Column)).Borders(xlEdgeRight).LineStyle = xlNone
+                    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R2, calc.Column)).HorizontalAlignment = xlRight
+                    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column + 1), srw.Cells(R2, calc.Column + 1)).HorizontalAlignment = xlLeft
+                End If
+            Next calc
+        End If
+        r_user_scenario = R
+        Evaluate_Scenario_Results
+        srw.Activate
+        currentFiltRange = srw.AutoFilter.Range.Address
+        srw.Range(currentFiltRange).AutoFilter
+        srw.Range(currentFiltRange).AutoFilter
+        If Range(&quot;Goto_from_User_Scenario&quot;).Value = 1 Then
+            Worksheets(&quot;Scenario List&quot;).Activate
+            Generate_Scenario_List
+        Else
+            Worksheets(&quot;Scenario Results&quot;).Activate
+            If r_user_scenario &gt; 0 Then
+              srw.Cells(r_user_scenario, srw.Range(&quot;Out_Scenario_No&quot;).Column).Activate
+            End If
+        End If
+        Application.Calculation = xlCalculationAutomatic
+        If Range(&quot;Filter_Equipment&quot;).Value = &quot;Yes&quot; Then
+            If Not mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+                srw.Range(currentFiltRange).AutoFilter _
+                    field:=srw.Range(&quot;Out_Equip_Tag&quot;).Column, _
+                    Criteria1:=mmw.Range(&quot;Equipment_Tag&quot;).Value
+            End If
+        End If
+        Application.ScreenUpdating = True
+        Application.StatusBar = False
+        macrorunning = False
+    End If
+    Cancel_User_Scenario
+End Sub
+
+</script:module>

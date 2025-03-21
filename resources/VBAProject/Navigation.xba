@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Navigation" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub Hide_SuggestedIPLs()
+&apos;
+&apos; Hide_SuggestedIPLs Macro
+&apos; Hide List of Suggested IPLs by Scenario Type
+&apos;
+
+&apos;
+    ActiveSheet.Unprotect
+    Range(&quot;A53:A111&quot;).EntireRow.Hidden = True
+    ActiveSheet.Protect
+End Sub
+Sub Show_SuggestedIPLs()
+&apos;
+&apos; Show_SuggestedIPLs Macro
+&apos; Show list of Suggested IPLs by Type of Scenario
+&apos;
+
+&apos;
+    ActiveSheet.Unprotect
+    Range(&quot;B53:B111&quot;).EntireRow.Hidden = False
+    ActiveSheet.Protect
+End Sub
+Sub Hide_ChemDetails()
+&apos;
+&apos; Hide_ChemDetails Macro
+&apos; Hide Chemical Details on the Chemical Data worksheet
+&apos;
+
+&apos;
+    ActiveSheet.Unprotect
+    Range(&quot;B57:B109&quot;).EntireRow.Hidden = True
+    ActiveSheet.Protect
+End Sub
+Sub Show_ChemDetails()
+&apos;
+&apos; Show_ChemDetail Macro
+&apos; Show Chemical Details on the Chemical Data worksheet
+&apos;
+
+&apos;
+   ActiveSheet.Unprotect
+    Range(&quot;B57:B109&quot;).EntireRow.Hidden = False
+    ActiveSheet.Protect
+End Sub
+Sub Go_to_Main_from_Revision()
+    Worksheets(&quot;Main Menu&quot;).Visible = True
+    Worksheets(&quot;Main Menu&quot;).Activate
+    Worksheets(&quot;Revision History&quot;).Visible = False
+End Sub
+Sub Goto_Revision_Log()
+    Worksheets(&quot;Revision History&quot;).Visible = True
+    Worksheets(&quot;Revision History&quot;).Activate
+End Sub
+Sub Goto_Workbook_Notes()
+    Sheets(&quot;Workbook Notes&quot;).Select
+    Range(&quot;C5:F5&quot;).Select
+End Sub
+Sub Hide_FEIDetails()
+    ActiveSheet.Unprotect
+    Range(&quot;O1:AB1&quot;).Select
+    Selection.EntireColumn.Hidden = True
+    ActiveSheet.Protect
+End Sub
+Sub Show_FEIDetails()
+    ActiveSheet.Unprotect
+    Range(&quot;O1:AB1&quot;).Select
+    Selection.EntireColumn.Hidden = False
+    ActiveSheet.Protect
+End Sub
+Sub Update_IPL_Summary()
+Worksheets(&quot;IPL Summary&quot;).Unprotect
+Range(&quot;U5&quot;).Copy Destination:=Worksheets(&quot;IPL Summary&quot;).Range(&quot;U6:U5006&quot;)
+Range(&quot;b3&quot;).Select
+Worksheets(&quot;IPL Summary&quot;).Protect
+End Sub
+Sub Go_To_Input_Guidance()
+Sheets(&quot;Input Guidance&quot;).Select
+End Sub
+Sub Go_To_IPL_Guidance()
+Worksheets(&quot;Scenario Selection Guidance&quot;).Visible = True
+Sheets(&quot;Scenario Selection Guidance&quot;).Select
+End Sub
+Sub Go_To_LOPA_Workbook()
+Worksheets(&quot;LOPA Worksheet&quot;).Activate
+End Sub
+
+Sub Go_To_Pool_Fire()
+Worksheets(&quot;Pool Fire Frequency&quot;).Visible = True
+Worksheets(&quot;Pool Fire Frequency&quot;).Activate
+End Sub
+Sub Go_To_Pump_Deadhead()
+Worksheets(&quot;Pump Deadhead&quot;).Visible = True
+Worksheets(&quot;Pump Deadhead&quot;).Activate
+End Sub
+Sub Go_To_Hazards()
+Worksheets(&quot;Hazards &amp; Consequences&quot;).Visible = True
+Worksheets(&quot;Hazards &amp; Consequences&quot;).Activate
+End Sub
+Sub Go_To_MART_MALR()
+Worksheets(&quot;MART_MALR&quot;).Visible = True
+Worksheets(&quot;MART_MALR&quot;).Activate
+End Sub
+Sub Go_To_LOPA_Menu()
+Worksheets(&quot;LOPA Menu&quot;).Visible = True
+Worksheets(&quot;LOPA Menu&quot;).Activate
+End Sub
+Sub Go_To_Main_Menu()
+Worksheets(&quot;Main Menu&quot;).Visible = True
+Worksheets(&quot;Main Menu&quot;).Activate
+End Sub
+Sub Go_To_Chemical_Data()
+Worksheets(&quot;Chemical Data&quot;).Visible = True
+Worksheets(&quot;Chemical Data&quot;).Activate
+End Sub
+Sub Go_To_Chemical_Data_from_New_Chemical()
+Worksheets(&quot;Chemical Data&quot;).Activate
+Worksheets(&quot;New Chemical&quot;).Visible = False
+End Sub
+Sub Go_To_Chemical_Table()
+Worksheets(&quot;Chemical Properties&quot;).Visible = True
+Worksheets(&quot;Chemical Properties&quot;).Activate
+End Sub
+Sub Go_To_New_Chemical_from_Chemical_Table()
+Worksheets(&quot;New Chemical&quot;).Activate
+Worksheets(&quot;Chemical Properties&quot;).Visible = False
+End Sub
+Sub Go_To_Equipment_Table()
+ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Visible = True
+ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Activate
+End Sub
+
+Sub Go_To_FE()
+ThisWorkbook.Worksheets(&quot;FEI &amp; CEI&quot;).Visible = True
+ThisWorkbook.Worksheets(&quot;FEI &amp; CEI&quot;).Activate
+End Sub
+
+Sub Go_To_Import_LOPA()
+    ThisWorkbook.Worksheets(&quot;Import LOPA&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Import LOPA&quot;).Activate
+    ActiveWindow.ScrollWorkbookTabs Position:=xlFirst
+    ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Release Calculations&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Scenario List&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Input Guidance&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Input Error Check&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Introduction&quot;).Visible = False
+    ThisWorkbook.Worksheets(&quot;Study Parameters&quot;).Visible = False
+End Sub
+
+Sub Go_To_Input_Data()
+ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Visible = True
+ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Activate
+End Sub
+
+Sub Go_To_Input_Data_from_FE()
+ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Activate
+ThisWorkbook.Worksheets(&quot;FEI &amp; CEI&quot;).Visible = False
+End Sub
+
+Sub Go_To_Input_Data_from_Relief_Effluent()
+Application.ScreenUpdating = False
+Clear_Relief_Effluent
+ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Activate
+ThisWorkbook.Worksheets(&quot;Relief Effluent&quot;).Visible = False
+Application.ScreenUpdating = True
+End Sub
+
+Sub Go_To_Input_Error_Check()
+Application.ScreenUpdating = False
+Set iecw = ThisWorkbook.Worksheets(&quot;Input Error Check&quot;)
+Worksheets(&quot;Input Error Check&quot;).Activate
+currentFiltRange = iecw.AutoFilter.Range.Address
+iecw.Unprotect
+iecw.Range(currentFiltRange).AutoFilter field:=1, Criteria1:=&quot;&lt;&gt;&quot;
+iecw.Protect AllowFiltering:=True
+iecw.Range(&quot;a1&quot;).Activate
+Application.ScreenUpdating = True
+End Sub
+
+Sub Go_To_New_Chemical()
+Worksheets(&quot;New Chemical&quot;).Visible = True
+Worksheets(&quot;New Chemical&quot;).Activate
+End Sub
+
+Sub Go_To_Plant_Layout()
+ThisWorkbook.Worksheets(&quot;Plant Layout&quot;).Visible = True
+ThisWorkbook.Worksheets(&quot;Plant Layout&quot;).Activate
+End Sub
+
+Sub Go_To_Process_Conditions()
+ThisWorkbook.Worksheets(&quot;Process Conditions&quot;).Visible = True
+ThisWorkbook.Worksheets(&quot;Process Conditions&quot;).Activate
+End Sub
+
+Sub Go_To_Reaction_Input()
+Worksheets(&quot;Reaction Input&quot;).Visible = True
+Worksheets(&quot;Reaction Input&quot;).Activate
+End Sub
+
+Sub Go_To_Relief_Effluent()
+ThisWorkbook.Worksheets(&quot;Relief Effluent&quot;).Visible = True
+ThisWorkbook.Worksheets(&quot;Relief Effluent&quot;).Activate
+End Sub
+
+Sub Go_To_Risk_Graph()
+&apos;    pass = InputBox(&quot;Enter password to display risk graph.&quot;)
+&apos;    If UCase(pass) = &quot;TIM&quot; Then
+        ThisWorkbook.Worksheets(&quot;Risk Summary&quot;).Visible = True
+        ThisWorkbook.Worksheets(&quot;Risk Summary&quot;).Activate
+&apos;        Else
+&apos;        If pass = &quot;&quot; Then
+&apos;        GoTo 100
+&apos;        Else
+&apos;        MsgBox &quot;Password incorrect.&quot;
+&apos;        End If
+&apos;100    End If
+End Sub
+
+Sub Go_To_Scenario_List()
+ThisWorkbook.Worksheets(&quot;Scenario List&quot;).Activate
+Generate_Scenario_List
+End Sub
+
+Sub Go_To_Scenario_Results()
+Worksheets(&quot;Scenario Results&quot;).Visible = True
+Worksheets(&quot;Scenario Results&quot;).Activate
+End Sub
+Sub Go_To_Scenario_Results_Filter()
+Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+If Not mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+    If srw.FilterMode = True Then
+        filt = srw.AutoFilter.Range.Address
+        srw.Range(filt).AutoFilter
+        srw.Range(filt).AutoFilter
+        srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Equip_Tag&quot;).Column, Criteria1:=mmw.Range(&quot;Equipment_Tag&quot;).Value
+    End If
+End If
+Worksheets(&quot;Scenario Results&quot;).Activate
+End Sub
+Sub Go_To_Scenario_Results_from_Risk_Graph()
+    ThisWorkbook.Worksheets(&quot;Risk Summary&quot;).Range(&quot;Risk_Filter_Input&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Visible = True
+    ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Activate
+End Sub
+
+
+
+</script:module>

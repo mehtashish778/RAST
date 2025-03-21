@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="ThisWorkbook" script:language="StarBasic" script:moduleType="document">Rem Attribute VBA_ModuleType=VBADocumentModule
+Option VBASupport 1
+&apos;  Author: Kevin Hersey
+&apos;  Last Revised: September 4, 2012 4:08 PM
+&apos;  Last Revised By: Kevin Hersey
+&apos;
+Option Base 1
+Private Sub Workbook_BeforeClose(Cancel As Boolean)
+    If Not ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_System&quot;).Value = &quot;&quot; Then
+        Application.UseSystemSeparators = ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_System&quot;).Value
+        ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_System&quot;).Value = &quot;&quot;
+    End If
+    If Not ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Decimal&quot;).Value = &quot;&quot; Then
+        Application.DecimalSeparator = ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Decimal&quot;).Value
+        ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Decimal&quot;).Value = &quot;&quot;
+    End If
+    If Not ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Thousands&quot;).Value = &quot;&quot; Then
+        Application.ThousandsSeparator = ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Thousands&quot;).Value
+        ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Thousands&quot;).Value = &quot;&quot;
+    End If
+End Sub
+Private Sub Workbook_Open()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set out = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+&apos;    If Not Application.DecimalSeparator = &quot;.&quot; Or Not Application.ThousandsSeparator = &quot;,&quot; Then
+&apos;        ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_System&quot;).Value = Application.UseSystemSeparators
+&apos;        ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Decimal&quot;).Value = Application.DecimalSeparator
+&apos;        ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Thousands&quot;).Value = Application.ThousandsSeparator
+&apos;        With Application
+&apos;            .UseSystemSeparators = False
+&apos;            .DecimalSeparator = &quot;.&quot;
+&apos;            .ThousandsSeparator = &quot;,&quot;
+&apos;        End With
+&apos;        MsgBox &quot;Note: Excel number handling settings have been changed&quot; &amp; Chr(13) &amp; &quot;Period is used as decimal separator and comma as thousands separator in this workbook.&quot; &amp; Chr(13) &amp; &quot;Excel will be returned to previous settings on closing.&quot;
+&apos;        Else
+&apos;        ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_System&quot;).Value = &quot;&quot;
+&apos;        ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Decimal&quot;).Value = &quot;&quot;
+&apos;        ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;International_Thousands&quot;).Value = &quot;&quot;
+&apos;    End If
+    Check_for_Orphans
+    
+    y = 8
+    x = out.Range(&quot;Out_Scenario_No&quot;).Offset(0, 1).Left + 3
+    out.Shapes(&quot;Equip_Loaded&quot;).Left = x
+    x = x + out.Shapes(&quot;Equip_Loaded&quot;).Width + y
+    
+    out.Shapes.Range(Array(&quot;Equip_Loaded_Label&quot;, &quot;Equip_Loaded&quot;)).Align msoAlignCenters, msoFalse
+    
+    out.Shapes(&quot;Go To Equipment Table&quot;).Left = x
+    x = x + out.Shapes(&quot;Go To Equipment Table&quot;).Width + y
+    
+    out.Shapes(&quot;Scenario_Identification&quot;).Left = x
+    x = x + out.Shapes(&quot;Scenario_Identification&quot;).Width + y
+    
+    out.Shapes(&quot;LOPA_Worksheet_&gt;&quot;).Left = x
+    
+    x = out.Range(&quot;Out_Scenario_No&quot;).Offset(0, 1).Left + 3 + out.Shapes(&quot;Equip_Loaded&quot;).Width + y
+    out.Shapes(&quot;Sort&quot;).Left = x
+    x = x + out.Shapes(&quot;Sort&quot;).Width + y
+    
+    out.Shapes(&quot;Reset_Filters&quot;).Left = x
+    x = x + out.Shapes(&quot;Reset_Filters&quot;).Width + y
+    
+    out.Shapes(&quot;Create_User_Scenario&quot;).Left = x
+    x = x + out.Shapes(&quot;Create_User_Scenario&quot;).Width + y
+    
+    out.Shapes(&quot;Modify_User_Scenario&quot;).Left = x
+    x = x + out.Shapes(&quot;Modify_User_Scenario&quot;).Width + y
+    
+    out.Shapes(&quot;Duplicate&quot;).Left = x
+    x = x + out.Shapes(&quot;Duplicate&quot;).Width + y
+    
+   
+    out.Shapes(&quot;Risk_Graph&quot;).Left = x
+    
+    LOPA_Shapes
+    
+    Application.DisplayAlerts = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+Sub Check_for_Orphans()
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    Set etw = ThisWorkbook.Worksheets(&quot;Equipment Table&quot;)
+    Application.DisplayStatusBar = True
+    Application.StatusBar = &quot;Checking for orphan scenarios&quot;
+    num_scenarios = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Equip_Tag&quot;).Column)) - 1
+    If num_scenarios &gt; 0 Then
+        If etw.FilterMode = True Then
+            filt = etw.AutoFilter.Range.Address
+            etw.Range(filt).AutoFilter
+            etw.Range(filt).AutoFilter
+        End If
+        R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+        For W = 1 To num_scenarios
+            If etw.Columns(etw.Range(&quot;T_Equipment_Tag&quot;).Column).Find(What:=srw.Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column), After:=etw.Range(&quot;T_Equipment_Tag&quot;), LookIn:=xlFormulas, lookat:=xlWhole, MatchCase:=False) Is Nothing Then
+                If Not srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Orphaned&quot; Then
+                    srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Orphaned&quot;
+                End If
+                ElseIf srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column) = &quot;Eliminated&quot; Then
+                    srw.Rows(R).Interior.ColorIndex = 15
+            End If
+            R = R + 1
+        Next W
+    End If
+    Application.StatusBar = False
+End Sub
+
+</script:module>

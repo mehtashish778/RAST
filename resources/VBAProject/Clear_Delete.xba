@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Clear_Delete" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub Clear_All()
+    Application.ScreenUpdating = False
+    macrorunning = True
+    If MsgBox(&quot;All input and equipment table data, user chemical properties, and scenario results will be deleted from this workbook.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Are you sure you would like to continue?&quot;, vbOKCancel, &quot;WARNING&quot;) = vbOK Then
+        Clear_LOPA
+        Clear_Results
+        Clear_Input_Data
+        Clear_Scenario_List
+        Clear_ScenarioList_Input
+        Clear_Equip_Table
+        Clear_User_Chemicals
+        Clear_New_Chemical
+        If Not ThisWorkbook.Worksheets(&quot;Risk Summary&quot;).Visible = xlVeryHidden Then
+            ThisWorkbook.Worksheets(&quot;Risk Summary&quot;).Visible = xlVeryHidden
+        End If
+        Worksheets(&quot;Equipment Table&quot;).Activate
+    End If
+    Create_Error_Message_Hyperlinks
+    Worksheets(&quot;Equipment Table&quot;).Unprotect
+    Worksheets(&quot;Chemical Data&quot;).Protect
+    Worksheets(&quot;Equipment Input&quot;).Protect
+    Worksheets(&quot;Input Guidance&quot;).Protect
+    Worksheets(&quot;Reaction Input&quot;).Protect
+    Worksheets(&quot;Scenario List&quot;).Protect
+    Worksheets(&quot;Scenario Identification&quot;).Protect
+    Worksheets(&quot;Release Calculations&quot;).Protect
+    Worksheets(&quot;Scenario Analysis&quot;).Protect
+    Worksheets(&quot;Scenario Results&quot;).Unprotect
+    Worksheets(&quot;Risk Summary&quot;).Protect
+    Worksheets(&quot;Revision History&quot;).Protect
+    Worksheets(&quot;User Scenario&quot;).Protect
+    Worksheets(&quot;LOPA Worksheet&quot;).Protect
+    Worksheets(&quot;Chemical Properties&quot;).Protect
+    Worksheets(&quot;IPL Credits&quot;).Protect
+    Worksheets(&quot;Unit Conversion&quot;).Protect
+    Worksheets(&quot;Study Parameters&quot;).Protect
+    Worksheets(&quot;Equipment Table&quot;).Visible = True
+    Worksheets(&quot;Chemical Data&quot;).Visible = True
+    Worksheets(&quot;Equipment Input&quot;).Visible = True
+    Worksheets(&quot;Input Guidance&quot;).Visible = True
+    Worksheets(&quot;Reaction Input&quot;).Visible = True
+    Worksheets(&quot;Scenario List&quot;).Visible = True
+    Worksheets(&quot;Scenario Identification&quot;).Visible = False
+    Worksheets(&quot;Release Calculations&quot;).Visible = False
+    Worksheets(&quot;Scenario Analysis&quot;).Visible = False
+    Worksheets(&quot;Scenario Results&quot;).Visible = True
+    Worksheets(&quot;Revision History&quot;).Visible = False
+    Worksheets(&quot;User Scenario&quot;).Visible = False
+    Worksheets(&quot;LOPA Worksheet&quot;).Visible = False
+    Worksheets(&quot;Chemical Properties&quot;).Visible = False
+    Worksheets(&quot;IPL Credits&quot;).Visible = False
+    Worksheets(&quot;Unit Conversion&quot;).Visible = False
+    Worksheets(&quot;FEI &amp; CEI&quot;).Visible = True
+    Worksheets(&quot;Workbook Notes&quot;).Visible = True
+    Worksheets(&quot;Study Parameters&quot;).Visible = False
+    Worksheets(&quot;Risk Summary&quot;).Visible = True
+    With Worksheets(&quot;LOPA Menu&quot;)
+        .Range(&quot;Exclude_MI&quot;).Value = &quot;No&quot;
+        .Range(&quot;Report_NoIPL&quot;).Value = &quot;Yes&quot;
+        .Range(&quot;Delete_Eliminated&quot;).Value = &quot;Never&quot;
+        .Range(&quot;Filter_Equipment&quot;).Value = &quot;Yes&quot;
+        .Range(&quot;Filter_IPLs&quot;).Value = &quot;No&quot;
+        .Range(&quot;Filter_Worst&quot;).Value = &quot;No&quot;
+    End With
+    ThisWorkbook.Worksheets(&quot;Introduction&quot;).Visible = True
+    Worksheets(&quot;Introduction&quot;).Activate
+    Range(&quot;A1&quot;).Select
+    macrorunning = False
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+End Sub
+Sub Clear_User_Chemicals()
+    If macrorunning = False Then
+        If MsgBox(&quot;This will delete ALL user chemicals in table.  Are you sure?&quot;, vbYesNo) = vbNo Then
+            Exit Sub
+        End If
+        Application.ScreenUpdating = False
+    End If
+    Application.Calculation = xlCalculationManual
+    Set cpw = ThisWorkbook.Worksheets(&quot;Chemical Properties&quot;)
+    Total = Application.WorksheetFunction.CountA(cpw.Columns(cpw.Range(&quot;Chemical_C&quot;).Column)) - 1
+    R = cpw.Range(&quot;Chemical_C&quot;).Row + 1
+    For x = 1 To Total
+        If cpw.Cells(R, cpw.Range(&quot;Prop_Source_C&quot;).Column).Text = &quot;User&quot; Then
+            cpw.Unprotect
+            cpw.Rows(R).EntireRow.Delete
+            cpw.Protect AllowFiltering:=True
+            Else
+            R = R + 1
+        End If
+    Next x
+    Application.Calculation = xlAutomatic
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+    End If
+End Sub
+
+Sub Clear_Equip_Table()
+    Set etw = ThisWorkbook.Worksheets(&quot;Equipment Table&quot;)
+    r1 = etw.Range(&quot;T_Equipment_Tag&quot;).Row
+    R2 = etw.UsedRange.Rows.Count
+    If R2 &gt; r1 Then
+        If macrorunning = False Then
+            If MsgBox(&quot;All equipment will be deleted from the Equipment Table.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Are you sure you would like to continue?&quot;, vbOKCancel, &quot;WARNING&quot;) = vbOK Then
+                If MsgBox(R2 - r1 &amp; &quot; equipment will be deleted from this workbook.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Are you ABSOLUTELY CERTAIN you would like to DELETE this equipment?&quot;, vbOKCancel, &quot;WARNING&quot;) = vbOK Then
+                    If etw.FilterMode = True Then
+                        filt = etw.AutoFilter.Range.Address
+                        etw.Range(filt).AutoFilter
+                        etw.Range(filt).AutoFilter
+                    End If
+                    etw.Range(etw.Cells(r1 + 1, 1), etw.Cells(R2, 1)).EntireRow.Delete
+                End If
+            End If
+            Else
+            If etw.FilterMode = True Then
+                filt = etw.AutoFilter.Range.Address
+                etw.Range(filt).AutoFilter
+                etw.Range(filt).AutoFilter
+            End If
+            etw.Range(etw.Cells(r1 + 1, 1), etw.Cells(R2, 1)).EntireRow.Delete
+        End If
+    End If
+End Sub
+Sub Clear_Results()
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    last = srw.UsedRange.Rows.Count
+    If macrorunning = False Then
+        If last - srw.Range(&quot;Out_Scenario_No&quot;).Row &gt; 0 Then
+            If MsgBox(&quot;All scenario results will be deleted from this workbook.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Are you sure you would like to continue?&quot;, vbOKCancel, &quot;WARNING&quot;) = vbOK Then
+                If MsgBox(last - srw.Range(&quot;Out_Scenario_No&quot;).Row &amp; &quot; scenarios will be deleted from this workbook.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Are you ABSOLUTELY CERTAIN you would like to DELETE these scenarios?&quot;, vbOKCancel, &quot;WARNING&quot;) = vbOK Then
+                    Application.ScreenUpdating = False
+                    Else
+                    Exit Sub
+                End If
+                Else
+                Exit Sub
+            End If
+            Else
+            Exit Sub
+        End If
+    End If
+    If srw.FilterMode = True Then
+        filt = srw.AutoFilter.Range.Address
+        srw.Range(filt).AutoFilter
+        srw.Range(filt).AutoFilter
+    End If
+    If last &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+        srw.Range(srw.Range(&quot;Out_Scenario_No&quot;).Offset(1, 0), srw.Cells(last, 1)).EntireRow.Delete
+    End If
+    srw.Activate
+    Application.GoTo reference:=srw.Range(&quot;Out_Scenario_No&quot;).Offset(1, 0), scroll:=True
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+    End If
+End Sub
+Sub Clear_PumpDeadhead()
+    Set cpw = ThisWorkbook.Worksheets(&quot;Pump Deadhead&quot;)
+    cpw.Range(&quot;F23:F25&quot;).Value = &quot;&quot;
+    cpw.Range(&quot;E28:E29&quot;).Value = &quot;&quot;
+    cpw.Range(&quot;E32:E33&quot;).Value = &quot;&quot;
+    cpw.Activate
+    cpw.Range(&quot;Pump_Volume&quot;).Select
+End Sub
+Sub Clear_FEI_CEI()
+    Set fcw = ThisWorkbook.Worksheets(&quot;FEI &amp; CEI&quot;)
+    fcw.Range(&quot;B8:D8&quot;).Value = &quot;&quot;
+    fcw.Range(&quot;H8:M8&quot;).Value = &quot;&quot;
+    fcw.Activate
+    fcw.Range(&quot;B8&quot;).Select
+End Sub
+Sub Clear_Relief_Effluent()
+    Set crew = ThisWorkbook.Worksheets(&quot;Relief Effluent&quot;)
+    crew.Range(&quot;h5:h6&quot;).Value = &quot;&quot;
+    crew.Range(&quot;d8:d9&quot;).Value = &quot;&quot;
+    crew.Range(&quot;d24:d55&quot;).Value = &quot;&quot;
+    crew.Range(&quot;h24:i55&quot;).Value = &quot;&quot;
+    crew.Activate
+    crew.Range(&quot;C8&quot;).Select
+End Sub
+Sub Clear_PoolFire()
+    Set pfw = ThisWorkbook.Worksheets(&quot;Pool Fire Frequency&quot;)
+    pfw.Range(&quot;D6:F6&quot;).Value = &quot;&quot;
+    pfw.Range(&quot;D7:E7&quot;).Value = &quot;&quot;
+    pfw.Range(&quot;B38:B47&quot;).Value = &quot;&quot;
+    pfw.Activate
+    pfw.Range(&quot;b7&quot;).Select
+End Sub
+Sub Clear_MALR()
+    Set mmw2 = ThisWorkbook.Worksheets(&quot;MART_MALR&quot;)
+    With mmw2
+        .Range(&quot;F13:F14&quot;).Value = &quot;&quot;
+        .Range(&quot;F24:F25&quot;).Value = &quot;&quot;
+        .Range(&quot;F37:F38&quot;).Value = &quot;&quot;
+        .Range(&quot;R21&quot;).Value = &quot;&quot;
+        .Range(&quot;Q44&quot;).Value = &quot;&quot;
+        .Activate
+        .Range(&quot;f13&quot;).Select
+    End With
+End Sub
+
+Sub Clear_Scenario_List()
+&apos;    If macrorunning = False Then
+&apos;        Application.ScreenUpdating = False
+&apos;        Application.Calculation = xlManual
+&apos;    End If
+    Set slw = ThisWorkbook.Worksheets(&quot;Scenario List&quot;)
+    slw.Unprotect
+    last = slw.UsedRange.Rows.Count
+    If last &gt; slw.Range(&quot;List_Scenario_Type&quot;).Offset(1, 0).Row Then
+        slw.Range(slw.Range(&quot;List_Scenario_Type&quot;).Offset(1, 0), slw.Cells(last, 1)).EntireRow.Delete
+        Else
+        Range(&quot;List_Scenario_Type&quot;).Offset(1, 0).EntireRow.Delete
+    End If
+    slw.Protect AllowFiltering:=True
+&apos;    If macrorunning = False Then
+&apos;        Application.ScreenUpdating = True
+&apos;        Application.Calculation = xlAutomatic
+&apos;    End If
+End Sub
+Sub Clear_User_Scenario_Inputs()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+    End If
+    Set usw = ThisWorkbook.Worksheets(&quot;User Scenario&quot;)
+    usw.Range(&quot;User_Scenario_Type&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Cause&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Cause_Desc&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Incident_Entered&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Defined_Input&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Defined_Input2&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Defined_Input3&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Outcome&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Consequence_User&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Release_Calcs_User&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Outcome_Desc_User&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Value_In&quot;).Value = &quot;&quot;
+    usw.Range(&quot;User_Units_In&quot;).Value = &quot;&quot;
+    If macrorunning = False Then
+        Application.ScreenUpdating = True
+    End If
+End Sub
+Sub Clear_New_Chemical()
+    If macrorunning = False Then
+        If MsgBox(&quot;This will erase all values on this sheet.  Are you sure?&quot;, vbYesNo) = vbNo Then
+            Exit Sub
+        End If
+        Application.Calculation = xlCalculationManual
+        Application.ScreenUpdating = False
+    End If
+    
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Range(&quot;Starting_Chemical&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Range(&quot;New_Chemical&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Range(&quot;User_Properties&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Range(&quot;User_PhysProps&quot;).ClearContents
+
+    If macrorunning = False Then
+        Application.Calculation = xlCalculationAutomatic
+        Application.ScreenUpdating = True
+    End If
+End Sub
+Sub Clear_Import_LOPA()
+    Set ilw = ThisWorkbook.Worksheets(&quot;Import LOPA&quot;)
+    If macrorunning = False Then
+        If MsgBox(&quot;This will clear all data on this sheet.  Are you sure?&quot;, vbOKCancel) = vbCancel Then
+            Exit Sub
+        End If
+    End If
+    ilw.Unprotect
+    If Val(Application.Version) &lt; 12 Then
+        last = 65536
+        Else
+        last = ilw.UsedRange.Rows.Count
+    End If
+    If last &gt; 8 Then
+        ilw.Range(ilw.Range(&quot;Imp_Equip_Tag_ET&quot;).Offset(3, 0), ilw.Cells(last, ilw.Range(&quot;Imp_Equip_Tag_ET&quot;).Column)).EntireRow.Delete
+        ilw.Range(ilw.Range(&quot;Imp_Gap&quot;).Offset(2, 0), ilw.Range(&quot;Imp_Comments_RS&quot;).Offset(6, 0)).Delete (xlShiftUp)
+        ilw.Cells(ilw.Range(&quot;Imp_Equip_Tag_ET&quot;).Row, ilw.Range(&quot;Imp_Equip_Tag_ET&quot;).Column + 1).Value = &quot;&quot;
+        ilw.Cells(ilw.Range(&quot;Imp_Equip_Type_ET&quot;).Row, ilw.Range(&quot;Imp_Equip_Type_ET&quot;).Column + 1).Value = &quot;&quot;
+        ilw.Cells(ilw.Range(&quot;Imp_Credible_RS&quot;).Row, ilw.Range(&quot;Imp_Credible_RS&quot;).Column + 1).Value = &quot;&quot;
+        ilw.Cells(ilw.Range(&quot;Imp_Key_Chemical_ET&quot;).Row, ilw.Range(&quot;Imp_Key_Chemical_ET&quot;).Column + 1).Value = &quot;&quot;
+        ilw.Cells(ilw.Range(&quot;Imp_AQ_RS&quot;).Row, ilw.Range(&quot;Imp_AQ_RS&quot;).Column + 1).Value = &quot;&quot;
+        ilw.Cells(ilw.Range(&quot;Imp_Scenario_Type_RS&quot;).Row, ilw.Range(&quot;Imp_Scenario_Type_RS&quot;).Column + 1).Value = &quot;&quot;
+        ilw.Cells(ilw.Range(&quot;Imp_Cause_RS&quot;).Row, ilw.Range(&quot;Imp_Cause_RS&quot;).Column + 1).Value = &quot;&quot;
+        ilw.Cells(ilw.Range(&quot;Imp_Incident_RS&quot;).Row, ilw.Range(&quot;Imp_Incident_RS&quot;).Column + 1).Value = &quot;&quot;
+        ilw.Cells(ilw.Range(&quot;Imp_Outcome_RS&quot;).Row, ilw.Range(&quot;Imp_Outcome_RS&quot;).Column + 1).Value = &quot;&quot;
+    End If
+    With ilw.Range(&quot;Imp_Gap&quot;).Offset(2, 0)
+        .Value = &quot;PASTE HERE&quot;
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .WrapText = True
+    End With
+    ilw.Range(&quot;Imp_Gap&quot;).Offset(2, 0).Font.ColorIndex = 5
+    ilw.Protect
+End Sub
+Sub Clear_Input_Data()
+    If macrorunning = False Then
+        If MsgBox(&quot;All input data on all input sheets will be deleted from this workbook.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Are you sure you would like to continue?&quot;, vbOKCancel, &quot;WARNING&quot;) = vbOK Then
+            Application.Calculation = xlCalculationManual
+            Application.ScreenUpdating = False
+            Else
+            Exit Sub
+        End If
+    End If
+    Clear_ScenarioList_Input
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Equipment&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Location&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Equipment_Status&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Date&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Partipants&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Plant_Section&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;PID_Number&quot;).Value = &quot;&quot;
+    
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Chemical&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Range(&quot;User_Properties&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Range(&quot;User_PhysProps&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Chemical_2&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Chemical_3&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Chemical_4&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Chemical_5&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Fract_Key_Chemical&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;WtFract_2&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;WtFract_3&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;WtFract_4&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;WtFract_5&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;SecPhase_1&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;SecPhase_2&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;SecPhase_3&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;SecPhase_4&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;SecPhase_5&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Chem_Comments&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Regulatory_Tox&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;T_Input&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;P_Input&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;User_Mix_Prop2&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;User_Mix_Prop&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;User_Dust_Prop&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Bulk_Density&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;LowMix_Corr_T&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;HighMix_Corr_T&quot;).ClearContents
+
+    For Each n In ThisWorkbook.Names
+&apos;        Application.StatusBar = &quot;Clearing &quot; &amp; n.Name &amp; &quot;: &quot; &amp; n
+        If InStr(1, n.RefersTo, &quot;&apos;Equipment Input&apos;!&quot;, vbTextCompare) &gt; 0 _
+            Or InStr(1, n.RefersTo, &quot;&apos;Process Conditions&apos;!&quot;, vbTextCompare) &gt; 0 _
+            Or InStr(1, n.RefersTo, &quot;&apos;Plant Layout&apos;!&quot;, vbTextCompare) &gt; 0 Then
+            If Not Right(n.Name, 5) = &quot;Units&quot; Then
+                If Range(n.Name).Locked = False Then
+                    Range(n.Name).Value = &quot;&quot;
+                End If
+            End If
+        End If
+    Next n
+
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Rx_Data_Reference_U&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Reactivity_Data_U&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Limiting_Rate&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Intended_Reaction&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Catalyzed&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Rx_Pooling&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Second_Phase&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Rx_Pooling_Factor&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Rx_MisLoading&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Rx_Misloading_Factor&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Rx_Incompatible&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Exo_Reaction&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Endo_Reaction&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;CP_Detonable&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Activation_Energy_Est&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Gas_Gen_Est&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;K_Material&quot;).ClearContents
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Reaction_Type&quot;).Value = &quot;Reaction&quot;
+    
+    Clear_FEI_CEI
+    Clear_MALR
+    Clear_PoolFire
+    Clear_Relief_Effluent
+    
+    Application.ScreenUpdating = False
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Activate
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Rx_Data_Reference_U&quot;).Select
+    ThisWorkbook.Worksheets(&quot;LOPA Menu&quot;).Range(&quot;Exclude_MI&quot;).Value = &quot;No&quot;
+    ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Range(&quot;Reactive_Only&quot;).Value = &quot;No&quot;
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Activate
+    ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Chemical&quot;).Select
+    ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Activate
+    ThisWorkbook.Worksheets(&quot;Equipment Input&quot;).Range(&quot;Description&quot;).Select
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Activate
+    ThisWorkbook.Worksheets(&quot;New Chemical&quot;).Range(&quot;Starting_Chemical&quot;).Select
+    ThisWorkbook.Worksheets(&quot;Process Conditions&quot;).Activate
+    ThisWorkbook.Worksheets(&quot;Process Conditions&quot;).Range(&quot;Inventory_Input&quot;).Select
+    ThisWorkbook.Worksheets(&quot;Plant Layout&quot;).Activate
+    ThisWorkbook.Worksheets(&quot;Plant Layout&quot;).Range(&quot;Public_Input&quot;).Select
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Activate
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Equipment_Tag&quot;).Select
+    If macrorunning = False Then
+        Application.Calculation = xlCalculationAutomatic
+        Application.ScreenUpdating = True
+    End If
+End Sub
+Sub Delete_Selected_User_Chemical()
+    Set cpw = ThisWorkbook.Worksheets(&quot;Chemical Properties&quot;)
+    R = ActiveCell.Row
+    If cpw.Cells(R, cpw.Range(&quot;Prop_Source_C&quot;).Column).Value = &quot;User&quot; Then
+        If MsgBox(cpw.Cells(R, 1).Value &amp; &quot; will be permanently deleted from chemical table.  Are you sure?&quot;, vbYesNo) = vbYes Then
+            cpw.Unprotect
+            cpw.Rows(R).EntireRow.Delete
+            cpw.Protect AllowFiltering:=True
+        End If
+    Else
+        MsgBox (&quot;Chemical selected is not a user chemical.  Re-select and try again.&quot;)
+    End If
+    
+End Sub
+
+
+
+</script:module>

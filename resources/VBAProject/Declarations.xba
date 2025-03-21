@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Declarations" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Public macrorunning As Boolean
+Public user_input_error As Boolean
+Public calculate_only_running As Boolean
+Public R As Integer
+Public re As Integer
+Public r_eq As Integer
+Public r_eq_start As Integer
+Public merge As Boolean
+Dim filterArray()
+Dim currentFiltRange As String
+
+
+</script:module>

@@ -1,0 +1,2002 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Flash_Routines" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Public Function estimateOfMulticomponentDistillationPadGasSweep(ByVal num_trials As Integer, ByVal Gain As Double, ByVal MaxDuration As Double, ByVal T As Double, ByVal Molar_HtVap As Double, ByVal MW_Pad As Double, ByVal Inert_FeedRate As Double, _
+    ByVal Alpha_1 As Variant, ByVal Alpha_2 As Variant, ByVal Alpha_3 As Variant, ByVal Alpha_4 As Variant, ByVal Alpha_5 As Variant, _
+    ByVal Feed_1 As Double, ByVal Feed_2 As Double, ByVal Feed_3 As Double, ByVal Feed_4 As Double, ByVal Feed_5 As Double, _
+    ByVal Rel_1 As Double, ByVal Rel_2 As Double, ByVal Rel_3 As Double, ByVal Rel_4 As Double, ByVal Rel_5 As Double, _
+    ByVal Mw_1 As Variant, ByVal Mw_2 As Variant, ByVal Mw_3 As Variant, ByVal Mw_4 As Variant, ByVal Mw_5 As Variant, _
+    ByVal Sep_1 As Double, ByVal Sep_2 As Double, ByVal Sep_3 As Double, ByVal Sep_4 As Double, ByVal Sep_5 As Double, _
+    ByVal VP_A As Double, ByVal VP_B As Double, ByVal VP_C As Double, ByVal Molar_Cs As Double, ByVal TBp As Double, ByVal P As Double, ByVal volume As Double, ByVal Mw_Feed As Double, ByVal ContainedMass As Double, ByVal Relief_Set_Input As Variant, ByVal MAWP As Double, ByVal Relief_Set As Double, ByVal Fv_Relief_Depressurize As Double, ByVal Psat As Double)
+
+&apos;  Evaporation from Pad Gas Sweep or Liquid Displacement
+&apos;  Simple Batch Distillation (Rayleigh Distillation) at Constant Relative Volatility (ref: Perry&apos;s Chemical Engineers&apos; Handbook)
+&apos;  Vapor-Liquid Equilibrium Ratio, Ki = yi / xi
+&apos;    Relative Volatility, ai = Ki / Kkey = yi xkey / ( xi ykey )
+&apos;  Ratio of final to initial moles liquid,  ln [ MiFinal / MiInitial ] = ai  ln [ MkeyFinal / MkeyInitial ]
+  &apos;Fraction Vaporized = [ Volume (P) / (82.05 T) + Inert Gas ] Total Pressure / (P+1)  + Cs (T - Tfinal) / DHv
+&apos;      where P is Operating Pressure (gauge)
+&apos;   Cs = liquid heat capacity
+&apos;   DHv = heat of vaporization
+&apos;            ai = relative volatility = ( yi / xi ) / ( ykey / xkey )  where yrel and xrel are for a key component
+       
+    TotalPadGasFeed = 0#
+    TotalContainedLiq = 0#
+    vapPressKey = 0#
+
+    Dim alpha(4) As Double
+    
+    alpha(0) = Alpha_1
+    alpha(1) = Alpha_2
+    alpha(2) = Alpha_3
+    alpha(3) = Alpha_4
+    alpha(4) = Alpha_5
+    
+    Dim molFractLiquidfeed(4) As Double
+    
+    molFractLiquidfeed(0) = Feed_1
+    molFractLiquidfeed(1) = Feed_2
+    molFractLiquidfeed(2) = Feed_3
+    molFractLiquidfeed(3) = Feed_4
+    molFractLiquidfeed(4) = Feed_5
+    
+    ReDim alphaXLimit(4) As Double
+    ReDim feedRelvolatility(4) As Double
+    ReDim relVolatility(4) As Double
+    
+    Dim Rel(4) As Double
+
+    Rel(0) = Rel_1
+    Rel(1) = Rel_2
+    Rel(2) = Rel_3
+    Rel(3) = Rel_4
+    Rel(4) = Rel_5
+    
+    Dim MW(4) As Variant
+    
+    MW(0) = IIf(Mw_1 = &quot;&quot;, 0, Mw_1)
+    MW(1) = IIf(Mw_2 = &quot;&quot;, 0, Mw_2)
+    MW(2) = IIf(Mw_3 = &quot;&quot;, 0, Mw_3)
+    MW(3) = IIf(Mw_4 = &quot;&quot;, 0, Mw_4)
+    MW(4) = IIf(Mw_5 = &quot;&quot;, 0, Mw_5)
+    
+    Dim sep(4) As Double
+    
+    sep(0) = Sep_1
+    sep(1) = Sep_2
+    sep(2) = Sep_3
+    sep(3) = Sep_4
+    sep(4) = Sep_5
+    
+    ReDim errVappress(num_trials) As Double
+
+    For x = 0 To 4
+        alphaXLimit(x) = molFractLiquidfeed(x) * alpha(x)
+    Next
+    
+    maxAlphaXLimit = 0
+    For i = LBound(alphaXLimit) To UBound(alphaXLimit)
+        If alphaXLimit(i) &gt; maxAlphaXLimit Then
+            maxAlphaXLimit = alphaXLimit(i)
+        End If
+    Next i
+
+    For x = 0 To 4
+        If alphaXLimit(x) = maxAlphaXLimit Then
+            feedRelvolatility(x) = alpha(x)
+            Else
+            feedRelvolatility(x) = 0
+        End If
+    Next x
+
+    maxFeedRelvol = 0
+    For i = LBound(feedRelvolatility) To UBound(feedRelvolatility)
+        If feedRelvolatility(i) &gt; maxFeedRelvol Then
+            maxFeedRelvol = feedRelvolatility(i)
+        End If
+    Next i
+
+    For j = 0 To 4
+        If molFractLiquidfeed(j) &gt; 0 Then
+            relVolatility(j) = alpha(j) / maxFeedRelvol
+        Else
+            relVolatility(j) = 0
+        End If
+    Next
+
+    TotalPadGasFeed = MaxDuration * Inert_FeedRate / MW_Pad
+
+    TotalContainedLiq = IIf(Mw_Feed &gt; 0, ContainedMass / Mw_Feed, 0#)
+
+    vapPressKey = Exp(VP_A - VP_B / (T + 273.15 - VP_C))
+
+    ReDim molFractPadGas(num_trials) As Double
+    ReDim fractTotalVaporized(num_trials) As Double
+    ReDim fractKeyRemoved(num_trials) As Double
+    
+    Dim sumVapPressure, sumVapMolwt, sumMolLiqRemaining, sumMolFractLiqA As Double
+
+    Dim vapPressure(4) As Double
+    Dim vapMolWt(4) As Double
+    Dim molLiqRemaining(4) As Double
+    Dim molFractLiqA(4) As Double
+
+    For i = 0 To num_trials
+        
+        P_Relief = IIf(Relief_Set_Input = &quot;&quot;, MAWP, Relief_Set)
+        If Fv_Relief_Depressurize &lt;&gt; 0 Then P_Relief = 1
+        If i = 0 Then
+            molFractPadGas(i) = (P_Relief + 1 - Psat) / (P_Relief + 1)
+        Else
+            molFractPadGas(i) = (P_Relief + 1 - sumVapPressure) / (P_Relief + 1)
+        End If
+        
+        If molFractPadGas(i) &lt; 0 Then molFractPadGas(i) = 0
+
+        fractTotalVaporized(i) = IIf((TotalContainedLiq &gt; 0 And molFractPadGas(i) &gt; 0), TotalPadGasFeed * (1 - molFractPadGas(i)) / (molFractPadGas(i) * TotalContainedLiq), 0)
+
+        If i = 0 Then
+            fractKeyRemoved(i) = IIf(fractTotalVaporized(i) &lt; 0.9999, fractTotalVaporized(i), 0.9999)
+        Else
+            If fractTotalVaporized(i) = 0 Then
+                fractKeyRemoved(i) = 0
+                Else
+                fractKeyRemoved(i) = (1 - (1 - fractTotalVaporized(i)) * (1 - fractKeyRemoved(i - 1)) / sumMolLiqRemaining)
+                If fractKeyRemoved(i) &lt; 0.0000001 Then fractKeyRemoved(i) = 0.0000001
+                If fractKeyRemoved(i) &gt; 0.9999999 Then fractKeyRemoved(i) = 0.9999999
+            End If
+        End If
+        
+        If i = 0 Then
+            For k = 0 To 4
+                vapPressure(k) = IIf(molFractLiquidfeed(k) = 0#, 0#, molFractLiquidfeed(k) * vapPressKey * Rel(k))
+            Next
+        Else
+            For k = 0 To 4
+                If molFractLiquidfeed(k) = 0# Then
+                    vapPressure(k) = 0#
+                Else
+                    Select Case sumMolFractLiqA
+                    Case 0.01 To 0.99
+                        vapPressure(k) = molLiqRemaining(k) * vapPressKey * Rel(k) * (sep(k) / sumMolFractLiqA + (1 - sep(k)) / (1 - sumMolFractLiqA)) / sumMolLiqRemaining
+                    Case 0 To 0.011
+                        vapPressure(k) = molLiqRemaining(k) * vapPressKey * Rel(k) * (sep(k) / 0.01 + (1 - sep(k)) / (0.99)) / sumMolLiqRemaining
+                    Case 0.989 To 0.9999999999
+                        vapPressure(k) = molLiqRemaining(k) * vapPressKey * Rel(k) * (sep(k) / 0.99 + (1 - sep(k)) / (0.01)) / sumMolLiqRemaining
+                    Case Else
+                        vapPressure(k) = molLiqRemaining(k) * vapPressKey * Rel(k) / sumMolLiqRemaining
+                    End Select
+                End If
+            Next
+        End If
+
+        sumVapPressure = vapPressure(0) + vapPressure(1) + vapPressure(2) + vapPressure(3) + vapPressure(4)
+
+        errVappress(i) = (1 + P - sumVapPressure) / (1 + P) - molFractPadGas(i)
+
+        For k = 0 To 4
+            vapMolWt(k) = IIf(sumVapPressure &gt; 0, vapPressure(k) * MW(k) / sumVapPressure, 0#)
+        Next
+
+        sumVapMolwt = vapMolWt(0) + vapMolWt(1) + vapMolWt(2) + vapMolWt(3) + vapMolWt(4)
+
+        For k = 0 To 4
+            molLiqRemaining(k) = molFractLiquidfeed(k) * Exp(relVolatility(k) * Log(1 - fractKeyRemoved(i)))
+        Next
+
+        sumMolLiqRemaining = molLiqRemaining(0) + molLiqRemaining(1) + molLiqRemaining(2) + molLiqRemaining(3) + molLiqRemaining(4)
+
+        For k = 0 To 4
+            molFractLiqA(k) = IIf(sumMolLiqRemaining &gt; 0, sep(k) * molLiqRemaining(k) / sumMolLiqRemaining, 0)
+        Next
+
+        sumMolFractLiqA = molFractLiqA(0) + molFractLiqA(1) + molFractLiqA(2) + molFractLiqA(3) + molFractLiqA(4)
+
+    Next
+
+    Dim molVaporMolInitPool(4) As Double
+
+    For k = 0 To 4
+        If molFractLiquidfeed(k) &gt; 0 Then
+            molVaporMolInitPool(k) = (molFractLiquidfeed(k) - molLiqRemaining(k)) / molFractLiquidfeed(k)
+            Else
+            molVaporMolInitPool(k) = 0
+        End If
+    Next
+
+    Gaspad_1 = molVaporMolInitPool(0)
+    Gaspad_2 = molVaporMolInitPool(1)
+    Gaspad_3 = molVaporMolInitPool(2)
+    Gaspad_4 = molVaporMolInitPool(3)
+    Gaspad_5 = molVaporMolInitPool(4)
+    FlashErr = 1 - sumMolLiqRemaining - fractTotalVaporized(num_trials)
+
+    estimateOfMulticomponentDistillationPadGasSweep = Application.Transpose(Array(Gaspad_1, Gaspad_2, Gaspad_3, Gaspad_4, Gaspad_5, FlashErr))
+
+End Function
+Public Function estimateOfMulticomponentDistillationOPT(ByVal num_trials As Integer, ByVal Gain As Double, ByVal MaxDuration As Double, ByVal T As Double, ByVal Molar_HtVap As Double, ByVal MW_Pad As Double, ByVal Inert_FeedRate As Double, _
+    ByVal Alpha_1 As Variant, ByVal Alpha_2 As Variant, ByVal Alpha_3 As Variant, ByVal Alpha_4 As Variant, ByVal Alpha_5 As Variant, _
+    ByVal Feed_1 As Double, ByVal Feed_2 As Double, ByVal Feed_3 As Double, ByVal Feed_4 As Double, ByVal Feed_5 As Double, _
+    ByVal Rel_1 As Double, ByVal Rel_2 As Double, ByVal Rel_3 As Double, ByVal Rel_4 As Double, ByVal Rel_5 As Double, _
+    ByVal Mw_1 As Variant, ByVal Mw_2 As Variant, ByVal Mw_3 As Variant, ByVal Mw_4 As Variant, ByVal Mw_5 As Variant, _
+    ByVal Sep_1 As Double, ByVal Sep_2 As Double, ByVal Sep_3 As Double, ByVal Sep_4 As Double, ByVal Sep_5 As Double, _
+    ByVal VP_A As Double, ByVal VP_B As Double, ByVal VP_C As Double, ByVal Molar_Cs As Double, ByVal TBp As Double, ByVal P As Double, ByVal volume As Double, ByVal Mw_Feed As Double, ByVal Max_ContainedMass As Double)
+  
+&apos;  Evaporation from Pad Gas Sweep or Liquid Displacement
+&apos;  Simple Batch Distillation (Rayleigh Distillation) at Constant Relative Volatility (ref: Perry&apos;s Chemical Engineers&apos; Handbook)
+&apos;  Vapor-Liquid Equilibrium Ratio, Ki = yi / xi
+&apos;    Relative Volatility, ai = Ki / Kkey = yi xkey / ( xi ykey )
+&apos;  Ratio of final to initial moles liquid,  ln [ MiFinal / MiInitial ] = ai  ln [ MkeyFinal / MkeyInitial ]
+  &apos;Fraction Vaporized = [ Volume (P) / (82.05 T) + Inert Gas ] Total Pressure / (P+1)  + Cs (T - Tfinal) / DHv
+&apos;      where P is Operating Pressure (gauge)
+&apos;   Cs = liquid heat capacity
+&apos;   DHv = heat of vaporization
+&apos;            ai = relative volatility = ( yi / xi ) / ( ykey / xkey )  where yrel and xrel are for a key component
+    
+    Dim padGasFeed As Double
+
+    Dim alpha(4) As Double
+    
+    alpha(0) = Alpha_1
+    alpha(1) = Alpha_2
+    alpha(2) = Alpha_3
+    alpha(3) = Alpha_4
+    alpha(4) = Alpha_5
+    
+    Dim molFractLiquidfeed(4) As Double
+    
+    molFractLiquidfeed(0) = Feed_1
+    molFractLiquidfeed(1) = Feed_2
+    molFractLiquidfeed(2) = Feed_3
+    molFractLiquidfeed(3) = Feed_4
+    molFractLiquidfeed(4) = Feed_5
+    
+    ReDim alphaXLimit(4) As Double
+    ReDim feedRelvolatility(4) As Double
+    ReDim relVolatility(4) As Double
+    
+    Dim Rel(4) As Double
+
+    Rel(0) = Rel_1
+    Rel(1) = Rel_2
+    Rel(2) = Rel_3
+    Rel(3) = Rel_4
+    Rel(4) = Rel_5
+    
+    Dim MW(4) As Variant
+    
+    MW(0) = Mw_1
+    MW(1) = Mw_2
+    MW(2) = Mw_3
+    MW(3) = Mw_4
+    MW(4) = Mw_5
+    
+    Dim sep(4) As Double
+    
+    sep(0) = Sep_1
+    sep(1) = Sep_2
+    sep(2) = Sep_3
+    sep(3) = Sep_4
+    sep(4) = Sep_5
+    
+    ReDim errVappress(num_trials) As Double
+
+    For x = 0 To 4
+        alphaXLimit(x) = molFractLiquidfeed(x) * alpha(x)
+    Next
+
+    maxAlphaXLimit = 0
+    For i = LBound(alphaXLimit) To UBound(alphaXLimit)
+        If alphaXLimit(i) &gt; maxAlphaXLimit Then
+            maxAlphaXLimit = alphaXLimit(i)
+        End If
+    Next i
+
+    For x = 0 To 4
+        If alphaXLimit(x) = maxAlphaXLimit Then
+            feedRelvolatility(x) = alpha(x)
+            Else
+            feedRelvolatility(x) = 0
+        End If
+    Next x
+
+    maxFeedRelvol = 0
+    For i = LBound(feedRelvolatility) To UBound(feedRelvolatility)
+        If feedRelvolatility(i) &gt; maxFeedRelvol Then
+            maxFeedRelvol = feedRelvolatility(i)
+        End If
+    Next i
+
+    For j = 0 To 4
+        If molFractLiquidfeed(j) &gt; 0 Then
+            relVolatility(j) = alpha(j) / maxFeedRelvol
+        Else
+            relVolatility(j) = 0
+        End If
+    Next
+    
+    padGasFeed = Inert_FeedRate / MW_Pad
+
+    ReDim finalTemp(num_trials) As Double
+    ReDim vapPressKey(num_trials) As Double
+
+    ReDim fractTotalVaporized(num_trials) As Double
+    ReDim fractKeyRemoved(num_trials) As Double
+    Dim sumVapPressure, sumVapMolwt, sumMolLiqRemaining, sumMolFractLiqA As Double
+
+    sumVapPressure = 0#
+    sumVapMolwt = 0#
+    sumMolLiqRemaining = 0#
+    sumMolFractLiqA = 0#
+
+
+    Dim vapPressure(4) As Double
+    Dim vapMolWt(4) As Double
+    Dim molLiqRemaining(4) As Double
+    Dim molFractLiqA(4) As Double
+
+    For i = 0 To num_trials
+
+        If i = 0 Then
+
+            If TBp &lt; T Then
+                finalTemp(i) = TBp
+            Else
+                finalTemp(i) = T
+            End If
+            vapPressKey(i) = Exp(VP_A - VP_B / (finalTemp(i) + 273.15 - VP_C))
+
+            For k = 0 To 4
+                If molFractLiquidfeed(k) = 0 Then
+                    vapPressure(k) = 0
+                Else
+                    vapPressure(k) = molFractLiquidfeed(k) * vapPressKey(i) * Rel(k)
+                End If
+            Next
+
+            sumVapPressure = vapPressure(0) + vapPressure(1) + vapPressure(2) + vapPressure(3) + vapPressure(4)
+
+            If sumVapPressure = 1 Then
+                fractTotalVaporized(i) = 1
+                Else
+                fractTotalVaporized(i) = (sumVapPressure / (1 - sumVapPressure)) * (P * volume / (82.05 * (finalTemp(i) + 273.15)) + MaxDuration * padGasFeed) * Mw_Feed / Max_ContainedMass
+            End If
+            
+            If fractTotalVaporized(i) &lt; 0 Then fractTotalVaporized(i) = 0
+            If fractTotalVaporized(i) &gt; 1 Then fractTotalVaporized(i) = 1
+          
+            fractKeyRemoved(i) = IIf(fractTotalVaporized(i) &lt; 0.99999999, fractTotalVaporized(i), 0.999999899)
+
+            errVappress(i) = fractTotalVaporized(i) - Molar_Cs * (T - finalTemp(i)) / Molar_HtVap
+
+            For k = 0 To 4
+                If MW(k) &lt;&gt; &quot;&quot; And sumVapPressure &gt; 0 Then
+                    vapMolWt(k) = vapPressure(k) * MW(k) / sumVapPressure
+                    Else
+                    vapMolWt(k) = 0
+                End If
+            Next
+
+            sumVapMolwt = vapMolWt(0) + vapMolWt(1) + vapMolWt(2) + vapMolWt(3) + vapMolWt(4)
+
+            For k = 0 To 4
+                molLiqRemaining(k) = molFractLiquidfeed(k) * Exp(relVolatility(k) * Log(1 - fractKeyRemoved(i)))
+            Next
+
+            sumMolLiqRemaining = molLiqRemaining(0) + molLiqRemaining(1) + molLiqRemaining(2) + molLiqRemaining(3) + molLiqRemaining(4)
+
+            For k = 0 To 4
+                If sumMolLiqRemaining &gt; 0 Then
+                    molFractLiqA(k) = sep(k) * molLiqRemaining(k) / sumMolLiqRemaining
+                    Else
+                    molFractLiqA(k) = 0
+                End If
+            Next
+
+            sumMolFractLiqA = molFractLiqA(0) + molFractLiqA(1) + molFractLiqA(2) + molFractLiqA(3) + molFractLiqA(4)
+
+        Else
+
+            If i = 1 Then
+                finalTemp(i) = finalTemp(0) - 2
+            Else
+
+                If errVappress(i - 2) - errVappress(i - 1) = 0 Then
+                    finalTemp(i) = finalTemp(i - 1)
+                Else
+                    If finalTemp(i - 1) - Gain * errVappress(i - 1) * (finalTemp(i - 1) - finalTemp(i - 2)) / (errVappress(i - 1) - errVappress(i - 2)) &lt; T Then
+                        finalTemp(i) = finalTemp(i - 1) - Gain * errVappress(i - 1) * (finalTemp(i - 1) - finalTemp(i - 2)) / (errVappress(i - 1) - errVappress(i - 2))
+                    Else
+                        finalTemp(i) = T
+                    End If
+                End If
+            End If
+
+            vapPressKey(i) = Exp(VP_A - VP_B / (finalTemp(i) + 273.15 - VP_C))
+
+            For k = 0 To 4
+                If molFractLiquidfeed(k) = 0# Then
+                    vapPressure(k) = 0#
+                Else
+                    If sumMolFractLiqA &gt; 0.01 And sumMolFractLiqA &lt; 0.99 Then
+                        vapPressure(k) = molLiqRemaining(k) * vapPressKey(i) * Rel(k) * (sep(k) / sumMolFractLiqA + (1 - sep(k)) / (1 - sumMolFractLiqA)) / sumMolLiqRemaining
+                    ElseIf sumMolFractLiqA &gt; 0 And sumMolFractLiqA &lt; 0.011 Then
+                        vapPressure(k) = molLiqRemaining(k) * vapPressKey(i) * Rel(k) * (sep(k) / 0.01 + (1 - sep(k)) / (0.99)) / sumMolLiqRemaining
+                    ElseIf sumMolFractLiqA &gt; 0.989 And sumMolFractLiqA &lt; 1 Then
+                        vapPressure(k) = molLiqRemaining(k) * vapPressKey(i) * Rel(k) * (sep(k) / 0.99 + (1 - sep(k)) / (0.01)) / sumMolLiqRemaining
+                    Else
+                        vapPressure(k) = molLiqRemaining(k) * vapPressKey(i) * Rel(k) / sumMolLiqRemaining
+                    End If
+                End If
+            Next
+
+            sumVapPressure = vapPressure(0) + vapPressure(1) + vapPressure(2) + vapPressure(3) + vapPressure(4)
+            
+            fractTotalVaporized(i) = (sumVapPressure / (1 - sumVapPressure)) * (P * volume / (82.05 * (finalTemp(i) + 273.15)) + MaxDuration * padGasFeed) * Mw_Feed / Max_ContainedMass
+            
+            If fractTotalVaporized(i) &lt; 0 Then fractTotalVaporized(i) = 0
+            If fractTotalVaporized(i) &gt; 1 Then fractTotalVaporized(i) = 1
+
+            If (1 - (1 - fractTotalVaporized(i)) * (1 - fractKeyRemoved(i - 1)) / sumMolLiqRemaining &lt; 0.00000001) Then
+                fractKeyRemoved(i) = 0.00000001
+            Else
+                fractKeyRemoved(i) = IIf(1 - (1 - fractTotalVaporized(i)) * (1 - fractKeyRemoved(i - 1)) / sumMolLiqRemaining &gt; 0.9999999, 0.9999999, (1 - (1 - fractTotalVaporized(i)) * (1 - fractKeyRemoved(i - 1)) / sumMolLiqRemaining))
+            End If
+
+            errVappress(i) = fractTotalVaporized(i) - Molar_Cs * (T - finalTemp(i)) / Molar_HtVap
+
+            For k = 0 To 4
+                If MW(k) &lt;&gt; &quot;&quot; And sumVapPressure &gt; 0 Then
+                    vapMolWt(k) = vapPressure(k) * MW(k) / sumVapPressure
+                    Else
+                    vapMolWt(k) = 0
+                End If
+            Next
+
+            sumVapMolwt = vapMolWt(0) + vapMolWt(1) + vapMolWt(2) + vapMolWt(3) + vapMolWt(4)
+
+            For k = 0 To 4
+                molLiqRemaining(k) = molFractLiquidfeed(k) * Exp(relVolatility(k) * Log(1 - fractKeyRemoved(i)))
+            Next
+
+            sumMolLiqRemaining = molLiqRemaining(0) + molLiqRemaining(1) + molLiqRemaining(2) + molLiqRemaining(3) + molLiqRemaining(4)
+
+            For k = 0 To 4
+                If sumMolLiqRemaining &gt; 0 Then
+                    molFractLiqA(k) = sep(k) * molLiqRemaining(k) / sumMolLiqRemaining
+                    Else
+                    molFractLiqA(k) = 0
+                End If
+            Next
+
+            sumMolFractLiqA = molFractLiqA(0) + molFractLiqA(1) + molFractLiqA(2) + molFractLiqA(3) + molFractLiqA(4)
+
+        End If
+
+    Next
+
+    pubFractTotalVaporized = fractTotalVaporized(num_trials)
+    pubFinalTemp = finalTemp(num_trials)
+
+    Dim molVaporMolInitPool(4) As Double
+    For k = 0 To 4
+        If molFractLiquidfeed(k) &gt; 0 Then
+            molVaporMolInitPool(k) = (molFractLiquidfeed(k) - molLiqRemaining(k)) / molFractLiquidfeed(k)
+            Else
+            molVaporMolInitPool(k) = 0
+        End If
+    Next
+
+    Depressurization_1 = molVaporMolInitPool(0)
+    Depressurization_2 = molVaporMolInitPool(1)
+    Depressurization_3 = molVaporMolInitPool(2)
+    Depressurization_4 = molVaporMolInitPool(3)
+    Depressurization_5 = molVaporMolInitPool(4)
+    FlashErr = 1 - sumMolLiqRemaining - fractTotalVaporized(num_trials)
+
+    estimateOfMulticomponentDistillationOPT = Application.Transpose(Array(pubFractTotalVaporized, pubFinalTemp, Depressurization_1, Depressurization_2, Depressurization_3, Depressurization_4, Depressurization_5, FlashErr))
+
+End Function
+Public Function MultiCompCndsOp(ByVal Temp As Double, ByVal num_trials As Integer, ByVal Initial_Dilution As Double, _
+    ByVal ambient_t As Double, ByVal act_rel As Double, ByVal Molar_Vapor_Cs As Double, ByVal Molar_HtVap As Double, _
+    ByVal VP_A As Double, ByVal VP_B As Double, ByVal VP_C As Double, _
+    ByVal Feed_1 As Double, ByVal Feed_2 As Double, ByVal Feed_3 As Double, ByVal Feed_4 As Double, ByVal Feed_5 As Double, _
+    ByVal Alpha_1 As Variant, ByVal Alpha_2 As Variant, ByVal Alpha_3 As Variant, ByVal Alpha_4 As Variant, ByVal Alpha_5 As Variant, _
+    ByVal Act_1 As Double, ByVal Act_2 As Double, ByVal Act_3 As Double, ByVal Act_4 As Double, ByVal Act_5 As Double, _
+    ByVal Rel_1 As Double, ByVal Rel_2 As Double, ByVal Rel_3 As Double, ByVal Rel_4 As Double, ByVal Rel_5 As Double)
+    
+&apos;  Condensation of Vapor mixed with Air and cooled to within 10 C of Ambient Temperature
+&apos;     Total Vapor Pressure, P = 1 / [ 1 + (2) 0.0144 { CVap ( T + 10 - TAmb ) + Fc DHv  }  ]
+&apos;  where:  CVap is vapor heat capacity, DHv is heat of vaporization, and Fc is fraction vapor condensed
+&apos;  Flash Material Balance:    xi = zi / [ Fc + (1- Fc) yi / xi ]
+&apos;  Vapor-Liquid Equilibria assuming Constant Relative Volatilites in Region of Interest:
+&apos;      yi = Poi xi / P
+&apos;  where:  P = total vapor pressure = Sum xi gi Poi
+&apos;   Po is vapor pressure
+&apos;   Cs = liquid heat capacity
+&apos;   DHv = heat of vaporization
+&apos;            ai = relative volatility = ( yi / xi ) / ( ykey / xkey )  where yrel and xrel are for a key component
+&apos;             xi = overall mole fraction component in liquid,  zi = mole fraction feed,  yi = mole fraction vapor
+    
+    AirTemp = ambient_t + 10
+    
+    vapPressKey = Math.Exp(VP_A - VP_B / (AirTemp + 273.15 - VP_C))
+    estimatedVaporPressure = 0#
+    intermCalc = 0#
+     
+    FracVaporCondensed = 0#
+
+    Dim EstLiqMolFract1_1 As Double
+    Dim EstLiqMolFract1_2 As Double
+    Dim EstLiqMolFract1_3 As Double
+    Dim EstLiqMolFract1_4 As Double
+    Dim EstLiqMolFract1_5 As Double
+     
+    EstLiqMolFract1_1 = 0#
+    EstLiqMolFract1_2 = 0#
+    EstLiqMolFract1_3 = 0#
+    EstLiqMolFract1_4 = 0#
+    EstLiqMolFract1_5 = 0#
+
+    If Alpha_1 &lt;&gt; 0# And Alpha_1 &lt;&gt; &quot;&quot; Then
+        EstLiqMolFract1_1 = Feed_1 / (Alpha_1 * act_rel * vapPressKey)
+    Else
+        EstLiqMolFract1_1 = 0
+    End If
+
+    If Alpha_2 &lt;&gt; 0# And Alpha_2 &lt;&gt; &quot;&quot; Then
+        EstLiqMolFract1_2 = Feed_2 / (Alpha_2 * act_rel * vapPressKey)
+    Else
+        EstLiqMolFract1_2 = 0
+    End If
+     
+    If Alpha_3 &lt;&gt; 0# And Alpha_3 &lt;&gt; &quot;&quot; Then
+        EstLiqMolFract1_3 = Feed_3 / (Alpha_3 * act_rel * vapPressKey)
+    Else
+        EstLiqMolFract1_3 = 0
+    End If
+
+    If Alpha_4 &lt;&gt; 0# And Alpha_4 &lt;&gt; &quot;&quot; Then
+        EstLiqMolFract1_4 = Feed_4 / (Alpha_4 * act_rel * vapPressKey)
+    Else
+        EstLiqMolFract1_4 = 0
+    End If
+
+    If Alpha_5 &lt;&gt; 0# And Alpha_5 &lt;&gt; &quot;&quot; Then
+        EstLiqMolFract1_5 = Feed_5 / (Alpha_5 * act_rel * vapPressKey)
+    Else
+        EstLiqMolFract1_5 = 0
+    End If
+
+    sumEstLiqMolFract1 = EstLiqMolFract1_1 + EstLiqMolFract1_2 + EstLiqMolFract1_3 + EstLiqMolFract1_4 + EstLiqMolFract1_5
+
+
+    Dim satVaporPress_1 As Double
+    Dim satVaporPress_2 As Double
+    Dim satVaporPress_3 As Double
+    Dim satVaporPress_4 As Double
+    Dim satVaporPress_5 As Double
+
+    satVaporPress_1 = 0#
+    satVaporPress_2 = 0#
+    satVaporPress_3 = 0#
+    satVaporPress_4 = 0#
+    satVaporPress_5 = 0#
+
+    sumSatVapPressure = 0#
+
+    For i = 1 To num_trials
+        If Feed_1 = 0 Then
+            satVaporPress_1 = 0
+        Else
+            satVaporPress_1 = EstLiqMolFract1_1 * vapPressKey * Act_1 * Rel_1
+        End If
+        satVaporPress_1 = satVaporPress_1 / sumEstLiqMolFract1
+
+
+        If Feed_2 = 0 Then
+            satVaporPress_2 = 0
+        Else
+            satVaporPress_2 = EstLiqMolFract1_2 * vapPressKey * Act_2 * Rel_2
+        End If
+        satVaporPress_2 = satVaporPress_2 / sumEstLiqMolFract1
+
+        If Feed_3 = 0 Then
+            satVaporPress_3 = 0
+        Else
+            satVaporPress_3 = EstLiqMolFract1_3 * vapPressKey * Act_3 * Rel_3
+        End If
+        satVaporPress_3 = satVaporPress_3 / sumEstLiqMolFract1
+
+        If Feed_4 = 0 Then
+            satVaporPress_4 = 0
+        Else
+            satVaporPress_4 = EstLiqMolFract1_4 * vapPressKey * Act_4 * Rel_4
+        End If
+        satVaporPress_4 = satVaporPress_4 / sumEstLiqMolFract1
+
+
+        If Feed_5 = 0 Then
+            satVaporPress_5 = 0
+        Else
+            satVaporPress_5 = EstLiqMolFract1_5 * vapPressKey * Act_5 * Rel_5
+        End If
+        satVaporPress_5 = satVaporPress_5 / sumEstLiqMolFract1
+
+        sumSatVapPressure = satVaporPress_1 + satVaporPress_2 + satVaporPress_3 + satVaporPress_4 + satVaporPress_5
+
+        If i = 1 Then
+            estimatedVaporPressure = sumSatVapPressure / 2
+        Else
+             
+            If sumSatVapPressure &gt; 0 Then
+                If sumSatVapPressure &lt; 1 Then
+                    estimatedVaporPressure = (estimatedVaporPressure + sumSatVapPressure) / 2
+                Else
+                    estimatedVaporPressure = estimatedVaporPressure
+                End If
+            Else
+                estimatedVaporPressure = estimatedVaporPressure
+            End If
+        End If
+         
+        intermCalc = 1 - 2 * estimatedVaporPressure * (Molar_Vapor_Cs * (Temp - AirTemp) + (1 - Initial_Dilution) * 6.94 * (Temp - ambient_t) / Initial_Dilution + Molar_HtVap) / (6.94 * (AirTemp - ambient_t) * (1 - 2 * estimatedVaporPressure) + 2 * estimatedVaporPressure * Molar_HtVap)
+
+        If sumSatVapPressure &gt; 1 Then
+                FracVaporCondensed = 0
+            ElseIf intermCalc &lt; 1 Then
+                If intermCalc &gt; 0 Then
+                    FracVaporCondensed = intermCalc
+                Else
+                    FracVaporCondensed = 0
+                End If
+            Else
+                If AirTemp &lt; Temp Then
+                    FracVaporCondensed = 1
+                Else
+                    FracVaporCondensed = 0
+                End If
+        End If
+        
+
+        If Feed_1 &gt; 0 And Alpha_1 &lt;&gt; 0# And Alpha_1 &lt;&gt; &quot;&quot; Then
+            EstLiqMolFract1_1 = Feed_1 / ((1 - FracVaporCondensed) * Alpha_1 * act_rel * _
+                vapPressKey / estimatedVaporPressure + FracVaporCondensed)
+        Else
+            EstLiqMolFract1_1 = 0
+        End If
+
+        If Feed_2 &gt; 0 And Alpha_2 &lt;&gt; 0# And Alpha_2 &lt;&gt; &quot;&quot; Then
+            EstLiqMolFract1_2 = Feed_2 / ((1 - FracVaporCondensed) * Alpha_2 * act_rel * _
+                vapPressKey / estimatedVaporPressure + FracVaporCondensed)
+        Else
+            EstLiqMolFract1_2 = 0
+        End If
+
+        If Feed_3 &gt; 0 And Alpha_3 &lt;&gt; 0# And Alpha_3 &lt;&gt; &quot;&quot; Then
+            EstLiqMolFract1_3 = Feed_3 / ((1 - FracVaporCondensed) * Alpha_3 * act_rel * _
+                vapPressKey / estimatedVaporPressure + FracVaporCondensed)
+        Else
+            EstLiqMolFract1_3 = 0
+        End If
+
+        If Feed_4 &gt; 0 And Alpha_4 &lt;&gt; 0# And Alpha_4 &lt;&gt; &quot;&quot; Then
+            EstLiqMolFract1_4 = Feed_4 / ((1 - FracVaporCondensed) * Alpha_4 * act_rel * _
+                vapPressKey / estimatedVaporPressure + FracVaporCondensed)
+        Else
+            EstLiqMolFract1_4 = 0
+        End If
+
+        If Feed_5 &gt; 0 And Alpha_5 &lt;&gt; 0# And Alpha_5 &lt;&gt; &quot;&quot; Then
+            EstLiqMolFract1_5 = Feed_5 / ((1 - FracVaporCondensed) * Alpha_5 * act_rel * _
+                vapPressKey / estimatedVaporPressure + FracVaporCondensed)
+        Else
+            EstLiqMolFract1_5 = 0
+        End If
+
+        sumEstLiqMolFract1 = EstLiqMolFract1_1 + EstLiqMolFract1_2 + EstLiqMolFract1_3 + EstLiqMolFract1_4 + EstLiqMolFract1_5
+
+    Next
+
+    Fc = FracVaporCondensed
+
+    Dim normalMolFrVap_1 As Double
+    Dim normalMolFrVap_2 As Double
+    Dim normalMolFrVap_3 As Double
+    Dim normalMolFrVap_4 As Double
+    Dim normalMolFrVap_5 As Double
+
+    normalMolFrVap_1 = 0#
+    normalMolFrVap_2 = 0#
+    normalMolFrVap_3 = 0#
+    normalMolFrVap_4 = 0#
+    normalMolFrVap_5 = 0#
+
+    If sumSatVapPressure &gt; 0 Then
+        normalMolFrVap_1 = satVaporPress_1 / sumSatVapPressure
+        normalMolFrVap_2 = satVaporPress_2 / sumSatVapPressure
+        normalMolFrVap_3 = satVaporPress_3 / sumSatVapPressure
+        normalMolFrVap_4 = satVaporPress_4 / sumSatVapPressure
+        normalMolFrVap_5 = satVaporPress_5 / sumSatVapPressure
+    Else
+        normalMolFrVap_1 = 0
+        normalMolFrVap_2 = 0
+        normalMolFrVap_3 = 0
+        normalMolFrVap_4 = 0
+        normalMolFrVap_5 = 0
+    End If
+     
+    If Feed_1 &gt; 0 Then
+        If (1 - Fc) * normalMolFrVap_1 / Feed_1 &lt; 1 Then
+            Condense_1 = (1 - Fc) * normalMolFrVap_1 / Feed_1
+        Else
+            Condense_1 = 1
+        End If
+    Else
+        Condense_1 = 0
+    End If
+
+
+    If Feed_2 &gt; 0 Then
+        If (1 - Fc) * normalMolFrVap_2 / Feed_2 &lt; 1 Then
+            Condense_2 = (1 - Fc) * normalMolFrVap_2 / Feed_2
+        Else
+            Condense_2 = 1
+        End If
+    Else
+        Condense_2 = 0
+    End If
+
+    If Feed_3 &gt; 0 Then
+        If (1 - Fc) * normalMolFrVap_3 / Feed_3 &lt; 1 Then
+            Condense_3 = (1 - Fc) * normalMolFrVap_3 / Feed_3
+        Else
+            Condense_3 = 1
+        End If
+    Else
+        Condense_3 = 0
+    End If
+
+    If Feed_4 &gt; 0 Then
+        If (1 - Fc) * normalMolFrVap_4 / Feed_4 &lt; 1 Then
+            Condense_4 = (1 - Fc) * normalMolFrVap_4 / Feed_4
+        Else
+            Condense_4 = 1
+        End If
+    Else
+        Condense_4 = 0
+    End If
+
+    If Feed_5 &gt; 0 Then
+        If (1 - Fc) * normalMolFrVap_5 / Feed_5 &lt; 1 Then
+            Condense_5 = (1 - Fc) * normalMolFrVap_5 / Feed_5
+        Else
+            Condense_5 = 1
+        End If
+    Else
+        Condense_5 = 0
+    End If
+    
+    FlashError = 1 - FracVaporCondensed + Fc
+
+    MultiCompCndsOp = Application.Transpose(Array(Fc, Condense_1, Condense_2, Condense_3, Condense_4, Condense_5, FlashError))
+
+End Function
+
+
+
+Public Function AerosolCalc(ByVal iterations As Integer, ByVal Gain As Double, ByVal Temp As Double, ByVal vel_input As Double, _
+  ByVal Mw_Feed As Double, ByVal U_droplet As Double, ByVal Liq_Dens As Double, ByVal FV As Double, _
+  ByVal fLiq_1 As Double, ByVal fLiq_2 As Double, ByVal fLiq_3 As Double, ByVal fLiq_4 As Double, ByVal fLiq_5 As Double, _
+  ByVal state As String, ByVal equipment_elevation As Double, _
+  ByVal ambient_t As Double, ByVal act_rel As Double, ByVal Molar_Cs As Double, ByVal Molar_HtVap As Double, _
+  ByVal VP_A As Double, ByVal VP_B As Double, ByVal VP_C As Double, _
+  ByVal Alpha_1 As Variant, ByVal Alpha_2 As Variant, ByVal Alpha_3 As Variant, ByVal Alpha_4 As Variant, ByVal Alpha_5 As Variant, _
+  ByVal Act_1 As Double, ByVal Act_2 As Double, ByVal Act_3 As Double, ByVal Act_4 As Double, ByVal Act_5 As Double, _
+  ByVal Rel_1 As Double, ByVal Rel_2 As Double, ByVal Rel_3 As Double, ByVal Rel_4 As Double, ByVal Rel_5 As Double, _
+  ByVal Mw_1 As Variant, ByVal Mw_2 As Variant, ByVal Mw_3 As Variant, ByVal Mw_4 As Variant, ByVal Mw_5 As Variant)
+  
+&apos;  Aerosol Evaporation
+&apos;  Fraction Aerosol Evaporation, Fd = 0.043 vd^2  Mw^2/3  Psat h^1/2 / [ Liq_Dens  T&apos; (1 - FV) ]     (Psat in kPa)
+&apos;     for droplet duration, t, of ( 2 h / g )^0.5 = 0.45 h^0.5    where h is release elevation
+&apos;  Droplet diameter, Dd = 0.17 (1 - FV) / vd^2  based on Critical Weber Number of 10 and proportional to (1 - FV)
+&apos;  Droplet Area per mol, Ad = 6 Mw_Feed / ( Dd  Liq_Dens )
+&apos;  Aerosol Temperature, Td = [ U_droplet Ad t Ambient_T + Cs Temp - Fd DHv ] / [ U_droplet Ad t + Cs }
+&apos;  where:  U_droplet = heat transfer coefficient to surrounding air
+&apos;          Cs = liquid heat capacity and Temp = initial temperature after flash
+&apos;  Flash Material Balance:   zi = (1-Fd) xi + Fd yi       xi = zi / [ (1-Fd) + Fd yi / xi ]
+&apos;  Vapor-Liquid Equilibria assuming Constant Relative Volatility in Region of Interest:
+&apos;      yi = Poi xi gi / P    where gi is 1 except for two liquid phases
+&apos;  where:  P = total vapor pressure = Sum xi gi Poi
+&apos;   Po is vapor pressure
+&apos;   DHv = heat of vaporization
+&apos;            gi = activity coefficient based on feed composition
+&apos;            xi = overall mol fraction component in liquid,  zi = mole fraction feed,  yi = mole fraction vapor
+&apos;            ai = relative volatility = ( yi / xi ) / ( ykey / xkey )  where yrel and xrel are for a key component
+  
+&apos; vel_input - velocity input like discharge_velocity, relief_velocity etc
+
+
+  Dim ALiq_1 As Double &apos;or the fraction of Chemical_1 in the liquid
+  Dim ALiq_2 As Double &apos;or the fraction of Chemical_2 in the liquid
+  Dim ALiq_3 As Double &apos;or the fraction of Chemical_3 in the liquid
+  Dim ALiq_4 As Double &apos;or the fraction of Chemical_4 in the liquid
+  Dim ALiq_5 As Double &apos;or the fraction of Chemical_5 in the liquid
+
+  ALiq_1 = fLiq_1 &apos; from flash routine
+  ALiq_2 = fLiq_2 &apos; from flash routine
+  ALiq_3 = fLiq_3 &apos; from flash routine
+  ALiq_4 = fLiq_4 &apos; from flash routine
+  ALiq_5 = fLiq_5 &apos; from flash routine
+
+  Dim Aerosol As Double  &apos;or the estimated aerosol evaporation fraction
+
+  Dim LiqA_1 As Double  &apos;which is the fraction of Chemical_1 in Liquid Phase A &apos; and 1 - LiqA_1 is the fraction of Chemical_1 in the second liquid phase.
+  Dim LiqA_2 As Double  &apos;which is the fraction of Chemical_2 in Liquid Phase A
+  Dim LiqA_3 As Double  &apos;which is the fraction of Chemical_3 in Liquid Phase A
+  Dim LiqA_4 As Double  &apos;which is the fraction of Chemical_4 in Liquid Phase A
+  Dim LiqA_5 As Double  &apos;which is the fraction of Chemical_5 in Liquid Phase A
+
+  Dim ParPress_1 As Double &apos;= which is the partial pressure of Chemical_1 in the total mixture
+  Dim ParPress_2 As Double &apos;= which is the partial pressure of Chemical_2 in the total mixture
+  Dim ParPress_3 As Double &apos;= which is the partial pressure of Chemical_3 in the total mixture
+  Dim ParPress_4 As Double &apos; = which is the partial pressure of Chemical_4 in the total mixture
+  Dim ParPress_5 As Double &apos;= which is the partial pressure of Chemical_5 in the total mixture
+
+  Dim VapMw_1 As Double &apos;= which is the estimated mole fraction of Chemical_1 in the vapor
+  Dim VapMw_2 As Double &apos;= which is the estimated mole fraction of Chemical_2 in the vapor
+  Dim VapMw_3 As Double &apos;= which is the estimated mole fraction of Chemical_3 in the vapor
+  Dim VapMw_4 As Double &apos;= which is the estimated mole fraction of Chemical_4 in the vapor
+  Dim VapMw_5 As Double &apos; = which is the estimated mole fraction of Chemical_5 in the vapor
+
+  Dim T_Estimate As Double &apos;which is the trial value for aerosol temperature
+
+  Dim i As Integer
+  Dim VapPress As Double
+  Dim intMaxTrials As Integer
+  Dim Sum_LiqA As Double
+  Dim Sum_ParPress As Double
+  Dim Sum_VapMw As Double
+  Dim T_Estimate_Prior As Double
+  Dim Sum_Liq As Double
+  Dim TBp_Aerosol As Double
+  Dim DropArea As Double
+  Dim Fd As Double
+  Dim pool_1 As Double
+  Dim pool_2 As Double
+  Dim pool_3 As Double
+  Dim pool_4 As Double
+  Dim pool_5 As Double
+  
+  DropArea = 36 * Mw_Feed * vel_input ^ 2 / (Liq_Dens * (1 - FV))
+
+  If Mw_1 = &quot;&quot; Then Mw_1 = 0
+  If Mw_2 = &quot;&quot; Then Mw_2 = 0
+  If Mw_3 = &quot;&quot; Then Mw_3 = 0
+  If Mw_4 = &quot;&quot; Then Mw_4 = 0
+  If Mw_5 = &quot;&quot; Then Mw_5 = 0
+
+  T_Estimate_Prior = 0
+
+  For i = 1 To iterations
+  
+      If i &gt; 1 Then
+          If state = &quot;Liquid&quot; And Molar_Cs &gt; 0 Then
+              T_Estimate = T_Estimate_Prior + Gain * ((0.45 * U_droplet * DropArea * equipment_elevation ^ 0.5 * ambient_t + 2 * Molar_Cs * Temp - Aerosol * Molar_HtVap) / (0.45 * U_droplet * DropArea * equipment_elevation ^ 0.5 + 2 * Molar_Cs) - T_Estimate_Prior)
+          Else
+              T_Estimate = Temp
+          End If
+      Else
+          If state = &quot;Liquid&quot; Then
+             T_Estimate = Temp - 10
+          Else
+              T_Estimate = Temp
+          End If
+      End If
+ 
+
+      VapPress = Math.Exp(VP_A - VP_B / (T_Estimate + 273.15 - VP_C))
+
+      If i &lt;&gt; 2 Then
+          ParPress_1 = IIf(ALiq_1 = 0, 0, VapPress * Rel_1 * ALiq_1 * Act_1)
+          ParPress_2 = IIf(ALiq_2 = 0, 0, VapPress * Rel_2 * ALiq_2 * Act_2)
+          ParPress_3 = IIf(ALiq_3 = 0, 0, VapPress * Rel_3 * ALiq_3 * Act_3)
+          ParPress_4 = IIf(ALiq_4 = 0, 0, VapPress * Rel_4 * ALiq_4 * Act_4)
+          ParPress_5 = IIf(ALiq_5 = 0, 0, VapPress * Rel_5 * ALiq_5 * Act_5)
+      Else
+          ParPress_1 = IIf(ALiq_1 = 0, 0, 2 * VapPress * Rel_1 * ALiq_1 * Act_1 / (1 + Sum_Liq))
+          ParPress_2 = IIf(ALiq_2 = 0, 0, 2 * VapPress * Rel_2 * ALiq_2 * Act_2 / (1 + Sum_Liq))
+          ParPress_3 = IIf(ALiq_3 = 0, 0, 2 * VapPress * Rel_3 * ALiq_3 * Act_3 / (1 + Sum_Liq))
+          ParPress_4 = IIf(ALiq_4 = 0, 0, 2 * VapPress * Rel_4 * ALiq_4 * Act_4 / (1 + Sum_Liq))
+          ParPress_5 = IIf(ALiq_5 = 0, 0, 2 * VapPress * Rel_5 * ALiq_5 * Act_5 / (1 + Sum_Liq))
+      End If
+
+      Sum_ParPress = ParPress_1 + ParPress_2 + ParPress_3 + ParPress_4 + ParPress_5
+
+      If i = 1 Then
+          If Sum_ParPress &lt;&gt; 0 Then
+              VapMw_1 = Mw_1 * (ParPress_1 / Sum_ParPress)
+              VapMw_2 = Mw_2 * (ParPress_2 / Sum_ParPress)
+              VapMw_3 = Mw_3 * (ParPress_3 / Sum_ParPress)
+              VapMw_4 = Mw_4 * (ParPress_4 / Sum_ParPress)
+              VapMw_5 = Mw_5 * (ParPress_5 / Sum_ParPress)
+          End If
+          Sum_VapMw = VapMw_1 + VapMw_2 + VapMw_3 + VapMw_4 + VapMw_5
+      End If
+      If Liq_Dens = 0 Then
+          Aerosol = 0
+          Else
+          If state = &quot;Liquid&quot; And 0.043 * vel_input ^ 2 * Sum_VapMw ^ 0.67 * Sum_ParPress * 101.3 * equipment_elevation ^ 0.5 / (Liq_Dens * (273.15 + T_Estimate) * (1.001 - FV)) &lt; 0.999 Then
+              Aerosol = 0.043 * vel_input ^ 2 * Sum_VapMw ^ 0.67 * Sum_ParPress * 101.3 * equipment_elevation ^ 0.5 / (Liq_Dens * (273.15 + T_Estimate) * (1.001 - FV))
+          ElseIf state = &quot;Solid&quot; Then
+              Aerosol = 0
+          Else
+              Aerosol = 0.999
+          End If
+      End If
+
+      If i &lt;&gt; iterations Then
+          If Alpha_1 &lt;&gt; 0# And Alpha_1 &lt;&gt; &quot;&quot; And Sum_ParPress &gt; 0 Then
+              ALiq_1 = fLiq_1 / (Aerosol * VapPress * Alpha_1 * act_rel / Sum_ParPress + 1 - Aerosol)
+          Else
+              ALiq_1 = 0#
+          End If
+          If Alpha_2 &lt;&gt; 0# And Alpha_2 &lt;&gt; &quot;&quot; And Sum_ParPress &gt; 0 Then
+              ALiq_2 = fLiq_2 / (Aerosol * VapPress * Alpha_2 * act_rel / Sum_ParPress + 1 - Aerosol)
+          Else
+              ALiq_2 = 0#
+          End If
+          If Alpha_3 &lt;&gt; 0# And Alpha_3 &lt;&gt; &quot;&quot; And Sum_ParPress &gt; 0 Then
+              ALiq_3 = fLiq_3 / (Aerosol * VapPress * Alpha_3 * act_rel / Sum_ParPress + 1 - Aerosol)
+          Else
+              ALiq_3 = 0#
+          End If
+          If Alpha_4 &lt;&gt; 0# And Alpha_4 &lt;&gt; &quot;&quot; And Sum_ParPress &gt; 0 Then
+              ALiq_4 = fLiq_4 / (Aerosol * VapPress * Alpha_4 * act_rel / Sum_ParPress + 1 - Aerosol)
+          Else
+              ALiq_4 = 0#
+          End If
+          If Alpha_5 &lt;&gt; 0# And Alpha_5 &lt;&gt; &quot;&quot; And Sum_ParPress &gt; 0 Then
+              ALiq_5 = fLiq_5 / (Aerosol * VapPress * Alpha_5 * act_rel / Sum_ParPress + 1 - Aerosol)
+          Else
+              ALiq_5 = 0#
+          End If
+          If Aerosol &lt; 0.999 Then FlashError = 1 - (ALiq_1 + ALiq_2 + ALiq_3 + ALiq_4 + ALiq_5) Else FlashError = 0
+          T_Estimate_Prior = T_Estimate
+          Sum_Liq = ALiq_1 + ALiq_2 + ALiq_3 + ALiq_4 + ALiq_5
+      End If
+      
+  Next
+  
+  TBp_Aerosol = 0#
+  Fd = 0#
+  Fd = Aerosol
+ &apos;If material is completely evaporated, limit the aerosol temperature to a maximum of the inlet temperature
+  If Aerosol &gt; 0.99 And T_Estimate &gt; Temp Then
+    TBp_Aerosol = Temp
+  Else
+    TBp_Aerosol = T_Estimate
+  End If
+  &apos;After the iterations are done, we will make sure the liquid composition &quot;output&quot; sums to exactly 1 by:
+  If Sum_Liq &lt;&gt; 0 Then
+      ALiq_1 = ALiq_1 / Sum_Liq
+      ALiq_2 = ALiq_2 / Sum_Liq
+      ALiq_3 = ALiq_3 / Sum_Liq
+      ALiq_4 = ALiq_4 / Sum_Liq
+      ALiq_5 = ALiq_5 / Sum_Liq
+  End If
+  pool_1 = ALiq_1
+  pool_2 = ALiq_2
+  pool_3 = ALiq_3
+  pool_4 = ALiq_4
+  pool_5 = ALiq_5
+  
+  
+  AerosolCalc = Application.Transpose(Array(Fd, TBp_Aerosol, pool_1, pool_2, pool_3, pool_4, pool_5, FlashError))
+
+End Function
+
+
+Public Function adiabaticFlash(ByVal Temp As Double, ByVal iterations As Integer, _
+    ByVal state As String, ByVal TBp As Double, ByVal Fract_Key_Chemical As Double, ByVal OperatingTemp As Double, _
+    ByVal act_rel As Double, ByVal Molar_Cs As Double, ByVal Molar_HtVap As Double, _
+    ByVal VP_A As Double, ByVal VP_B As Double, ByVal VP_C As Double, _
+    ByVal Rel_1 As Double, ByVal Rel_2 As Double, ByVal Rel_3 As Double, ByVal Rel_4 As Double, ByVal Rel_5 As Double, _
+    ByVal Feed_1 As Double, ByVal Feed_2 As Double, ByVal Feed_3 As Double, ByVal Feed_4 As Double, ByVal Feed_5 As Double, _
+    ByVal Alpha_1 As Variant, ByVal Alpha_2 As Variant, ByVal Alpha_3 As Variant, ByVal Alpha_4 As Variant, ByVal Alpha_5 As Variant, _
+    ByVal Mw_1 As Variant, ByVal Mw_2 As Variant, ByVal Mw_3 As Variant, ByVal Mw_4 As Variant, ByVal Mw_5 As Variant)
+    
+&apos;  Simple Adiabatic Flash at constant relative volatility in the region of interest
+&apos;  Flash Fraction, Fv = Cs ( T - Tb ) / DHv        Flash Material Balance:    xi = zi / [ (1-Fv) + Fv yi / xi ]
+&apos;  Vapor-Liquid Equilibria assuming Constant Relative Volatility in Region of Interest:
+&apos;      yi = Poi xi gi / P    where gi is 1 except for two liquid phases
+&apos;  where:  P = total vapor pressure = Sum xi gi Poi
+&apos;   Po is vapor pressure
+&apos;   Cs = liquid heat capacity
+&apos;   DHv = heat of vaporization
+&apos;   T and Tb are release temperature  and boiling point
+&apos;             gi = activity coefficient based on feed composition
+&apos;             xi = overall mole fraction component in liquid,  zi = mole fraction feed,  yi = mole fraction vapor
+&apos;             ai = relative volatility = ( yi / xi ) / ( yrel / xrel )  where yrel and xrel are for a key component
+   
+    Dim i As Integer
+
+    Dim LiqA_1 As Double
+    Dim LiqA_2 As Double
+    Dim LiqA_3 As Double
+    Dim LiqA_4 As Double
+    Dim LiqA_5 As Double
+    
+    LiqA_1 = Feed_1
+    LiqA_2 = Feed_2
+    LiqA_3 = Feed_3
+    LiqA_4 = Feed_4
+    LiqA_5 = Feed_5
+    
+    Dim Error1 As Double
+    Error1 = 1
+
+    Dim VapPress As Double
+    Dim Sum_LiqA As Double
+    Dim T_Estimate_Prior As Double
+    Dim Error_Prior
+    Dim errorP2 As Double
+    Dim Sum_Liq As Double
+    Dim Flash As Double
+    Dim FV As Double
+    T_estimateP2 = 0
+    i = 1
+    
+    If Mw_1 = &quot;&quot; Then Mw_1 = 0
+    If Mw_2 = &quot;&quot; Then Mw_2 = 0
+    If Mw_3 = &quot;&quot; Then Mw_3 = 0
+    If Mw_4 = &quot;&quot; Then Mw_4 = 0
+    If Mw_5 = &quot;&quot; Then Mw_5 = 0
+
+    For i = 1 To iterations
+
+        If i = 1 Then
+            If state = &quot;Liquid&quot; And Temp &gt; TBp Then
+                If Fract_Key_Chemical &lt; 1 Then
+                    T_Estimate = 0.8 * TBp + 0.2 * Temp
+                Else
+                    T_Estimate = TBp
+                End If
+            Else
+                T_Estimate = Temp
+            End If
+            
+        ElseIf i = 2 Then
+
+            If state = &quot;Liquid&quot; And Temp &gt; TBp Then
+                If Error1 &lt; 0 Then
+                    T_Estimate = T_Estimate - 5
+                Else
+                    If T_Estimate + 5 &lt; Temp - 1 Then
+                        T_Estimate = T_Estimate + 5
+                    Else
+                        T_Estimate = Temp - 1
+                    End If
+                End If
+            Else
+                T_Estimate = Temp
+            End If
+            
+        Else  &apos; for trial 3,4 and 5
+
+            If Math.Abs(errorP2 - Error_Prior) &gt; 0 Then
+                If (T_Estimate - 0.5 * Error_Prior * (T_Estimate_Prior - T_estimateP2) / (errorP2 - Error_Prior) &lt; Temp - 0.5) Then
+                    T_Estimate = T_Estimate - 0.5 * Error_Prior * (T_Estimate_Prior - T_estimateP2) / (Error_Prior - errorP2)
+                Else
+                    T_Estimate = Temp - 0.5
+                End If
+            Else
+                T_Estimate = T_Estimate
+            End If
+        End If
+
+        VapPress = Math.Exp(VP_A - VP_B / (T_Estimate + 273.15 - VP_C))
+
+        If Temp &gt; TBp And Molar_HtVap &gt; 0 Then
+            If Molar_Cs * (Temp - T_Estimate) / Molar_HtVap &gt; 1 Then
+                Flash = 1
+            Else
+                Flash = Molar_Cs * (Temp - T_Estimate) / Molar_HtVap
+            End If
+        Else
+            Flash = 0
+        End If
+
+        If Alpha_1 &lt;&gt; 0# And Alpha_1 &lt;&gt; &quot;&quot; Then
+            fLiq_1 = LiqA_1 / (Flash * VapPress * Alpha_1 * act_rel + 1 - Flash)
+        Else
+            fLiq_1 = 0
+        End If
+
+        If Alpha_2 &lt;&gt; 0# And Alpha_2 &lt;&gt; &quot;&quot; Then
+            fLiq_2 = LiqA_2 / (Flash * VapPress * Alpha_2 * act_rel + 1 - Flash)
+        Else
+            fLiq_2 = 0
+        End If
+
+        If Alpha_3 &lt;&gt; 0# And Alpha_3 &lt;&gt; &quot;&quot; Then
+            fLiq_3 = LiqA_3 / (Flash * VapPress * Alpha_3 * act_rel + 1 - Flash)
+        Else
+            fLiq_3 = 0
+        End If
+
+        If Alpha_4 &lt;&gt; 0# And Alpha_4 &lt;&gt; &quot;&quot; Then
+            fLiq_4 = LiqA_4 / (Flash * VapPress * Alpha_4 * act_rel + 1 - Flash)
+        Else
+            fLiq_4 = 0
+        End If
+
+        If Alpha_5 &lt;&gt; 0# And Alpha_5 &lt;&gt; &quot;&quot; Then
+            fLiq_5 = LiqA_5 / (Flash * VapPress * Alpha_5 * act_rel + 1 - Flash)
+        Else
+            fLiq_5 = 0
+        End If
+        Sum_Liq = fLiq_1 + fLiq_2 + fLiq_3 + fLiq_4 + fLiq_5
+
+        T_estimateP2 = T_Estimate_Prior
+        T_Estimate_Prior = T_Estimate
+        Error1 = (fLiq_1 + fLiq_2 + fLiq_3 + fLiq_4 + fLiq_5) - 1
+
+        errorP2 = Error_Prior
+        Error_Prior = Error1
+
+    Next
+
+    fLiq_1 = fLiq_1 / Sum_Liq
+    fLiq_2 = fLiq_2 / Sum_Liq
+    fLiq_3 = fLiq_3 / Sum_Liq
+    fLiq_4 = fLiq_4 / Sum_Liq
+    fLiq_5 = fLiq_5 / Sum_Liq
+
+    FV = Flash
+    TBp_afterFlash = T_Estimate
+
+    &apos;depressurize mass fraction calculation()
+
+    Dim depressCol1() As Double
+    Dim depressCol2() As Double
+    Dim sum1 As Double
+
+    depressCol1_1 = IIf(Mw_1 &lt;&gt; 0#, Mw_1 * Feed_1, 0)
+    depressCol1_2 = IIf(Mw_2 &lt;&gt; 0#, Mw_2 * Feed_2, 0)
+    depressCol1_3 = IIf(Mw_3 &lt;&gt; 0#, Mw_3 * Feed_3, 0)
+    depressCol1_4 = IIf(Mw_4 &lt;&gt; 0#, Mw_4 * Feed_4, 0)
+    depressCol1_5 = IIf(Mw_5 &lt;&gt; 0#, Mw_5 * Feed_5, 0)
+
+    sum1 = depressCol1_1 + depressCol1_2 + depressCol1_3 + depressCol1_4 + depressCol1_5
+
+    depressCol2_1 = IIf(Mw_1 &lt;&gt; 0#, Mw_1 * fLiq_1 * FV, 0)
+    depressCol2_2 = IIf(Mw_2 &lt;&gt; 0#, Mw_2 * fLiq_2 * FV, 0)
+    depressCol2_3 = IIf(Mw_3 &lt;&gt; 0#, Mw_3 * fLiq_3 * FV, 0)
+    depressCol2_4 = IIf(Mw_4 &lt;&gt; 0#, Mw_4 * fLiq_4 * FV, 0)
+    depressCol2_5 = IIf(Mw_5 &lt;&gt; 0#, Mw_5 * fLiq_5 * FV, 0)
+
+    Mass_Fv_OpTemp = IIf(FlashErrorsum1 &gt; 0#, (depressCol2_1 + depressCol2_2 + depressCol2_3 + depressCol2_4 + depressCol2_5) / sum1, 0#)
+    If FV &lt; 1 Then FlashError = Error1 Else FlashError = 0
+
+    adiabaticFlash = Application.Transpose(Array(FV, TBp_afterFlash, fLiq_1, fLiq_2, fLiq_3, fLiq_4, fLiq_5, Mass_Fv_OpTemp, FlashError))
+
+End Function
+
+
+Public Function poolRoutine(ByVal iterations As Integer, ByVal MaxDuration As Double, ByVal LeakDuration As Double, ByVal avgLiqLeakRate As Double, _
+    ByVal FractionRainout As Double, ByVal liqTemp As Double, _
+    ByVal pFeed_1 As Double, ByVal pFeed_2 As Double, ByVal pFeed_3 As Double, ByVal pFeed_4 As Double, ByVal pFeed_5 As Double, _
+    ByVal Ambient_Temp As Double, ByVal Wind_Effective As Double, ByVal solar As Double, ByVal Gnd_Coeff As Double, ByVal Liq_rho_atTBp As Double, _
+    ByVal Dike_area As Double, ByVal Mw_Feed As Double, _
+    ByVal act_rel As Double, ByVal Molar_Cs As Double, ByVal Molar_HtVap As Double, _
+    ByVal Act_1 As Double, ByVal Act_2 As Double, ByVal Act_3 As Double, ByVal Act_4 As Double, ByVal Act_5 As Double, _
+    ByVal Rel_1 As Double, ByVal Rel_2 As Double, ByVal Rel_3 As Double, ByVal Rel_4 As Double, ByVal Rel_5 As Double, _
+    ByVal VP_A As Double, ByVal VP_B As Double, ByVal VP_C As Double, _
+    ByVal Alpha_1 As Variant, ByVal Alpha_2 As Variant, ByVal Alpha_3 As Variant, ByVal Alpha_4 As Variant, ByVal Alpha_5 As Variant, _
+    ByVal Mw_1 As Variant, ByVal Mw_2 As Variant, ByVal Mw_3 As Variant, ByVal Mw_4 As Variant, ByVal Mw_5 As Variant)
+
+&apos;  Pool Evaporation - Based on flash calculation during liquid feed and Rayleigh distillation after liquid feed
+&apos;
+&apos;  Pool Flash during liquid feed:
+&apos;  Pool Evaporation Rate, mP = 0.0021 u^0.78 Psat / (Mw^1/3  Tp)   in Kg mol/sec m2     (Psat in kPa)
+&apos;  Maximum Pool Area, Ap = L  Fr / [ rL / 100 tL ]  in m2     limited to a maximum of Diked Area
+&apos;  Pool Temperature during leak, Tp = [ T&apos; L&apos;  Fr  Cs + Ap (S - m&apos;P DHv + k Ta) ] / [  L&apos;  Fr  Cs + k Ap ]
+&apos;  where:  Fr is Fraction Rainout = 1 - Fv - (1 - Fv) Fd,    L&apos; is molar liquid fill rate,    tL is leak duration
+&apos;            m&apos;P is molar pool evaporation rate,  Ta is ambient temperature, and k is heat loss to ground coefficient
+&apos;  Flash Material Balance:   zi = (1-Fp) xi + Fp yi       xi = zi / [ (1-Fp) + Fp yi / xi ]     where Fp = mP Ap / (2 L Fr)
+&apos;  Vapor-Liquid Equilibria assuming Constant Relative Volatility in Region of Interest:
+&apos;    yi = Poi xi gi / P    where gi is 1 except for two liquid phases
+&apos;  where:  P = total vapor pressure = Sum xi gi Poi
+&apos;   Po is vapor pressure
+&apos;   Cs = liquid heat capacity
+&apos;   DHv = heat of vaporization
+&apos;   S = solar heat input per area
+&apos;             gi = activity coefficient based on feed composition
+&apos;             xi = overall mol fraction component in liquid,  zi = mol fraction feed,  yi = mol fraction vapor
+&apos;             ai = relative volatility = ( yi / xi ) / ( ykey / xkey )  where yrel and xrel are for a key component
+
+&apos;  Rayleigh distillation after liquid feed:
+&apos;  Pool Evaporation Rate, mP = 0.0021 u^0.89 Psat / ( Mw^1/3 Tp)   in Kg mol vapor/sec m2     (Psat in kPa)
+&apos;  Pool Temperature after leak, Tp&apos; = [2 Mo Cs Tp + Ap t { S - mP&apos; DHv + k  Ta}] / [ 2 M&apos;o Cs + k Ap t ]
+&apos;      where Tpf and m&apos;Pf are temperature and molar evaporation rate at time, t, after the leak has stopped
+&apos;  Ratio of final to initial moles liquid,  ln [ MiFinal / MiInitial ] = ai  ln [ MkeyFinal / MkeyInitial ]
+&apos;  where:  P = total vapor pressure = Sum xi gi Poi
+&apos;   Po is vapor pressure
+&apos;   Mo is total moles in liquid pool after feed stops
+&apos;             ai = relative volatility = ( yi / xi ) / ( ykey / xkey )  where yrel and xrel are for a key component
+
+
+    Dim liqDensity As Double
+    liqDensity = 1000 * Liq_rho_atTBp
+    
+    If Mw_1 = &quot;&quot; Then Mw_1 = 0
+    If Mw_2 = &quot;&quot; Then Mw_2 = 0
+    If Mw_3 = &quot;&quot; Then Mw_3 = 0
+    If Mw_4 = &quot;&quot; Then Mw_4 = 0
+    If Mw_5 = &quot;&quot; Then Mw_5 = 0
+  
+    Dim Sum_ParPress As Double
+
+    Dim ParPress_1 As Double
+    Dim ParPress_2 As Double
+    Dim ParPress_3 As Double
+    Dim ParPress_4 As Double
+    Dim ParPress_5 As Double
+
+    Dim poolTemp As Double
+    Dim vaporPresOfkey As Double &apos;Vapor Pressure of key =EXP(VP_A-VP_B/(F314+273.15-VP_C))
+    Dim PoolEvaporationRate As Double
+    Dim max_poolArea As Double
+    Dim fracLeakDuration As Double
+    Dim FractionPoolEvaporation As Double
+    VapMolWeight1_1 = 0#
+    VapMolWeight1_2 = 0#
+    VapMolWeight1_3 = 0#
+    VapMolWeight1_4 = 0#
+    VapMolWeight1_5 = 0#
+    Dim sum_VapMolWeight As Double
+    Dim molFracLiqFeed_1 As Double
+    Dim molFracLiqFeed_2 As Double
+    Dim molFracLiqFeed_3 As Double
+    Dim molFracLiqFeed_4 As Double
+    Dim molFracLiqFeed_5 As Double
+
+    Dim molFracTotLiq_1 As Double
+    Dim molFracTotLiq_2 As Double
+    Dim molFracTotLiq_3 As Double
+    Dim molFracTotLiq_4 As Double
+    Dim molFracTotLiq_5 As Double
+    
+    molFracTotLiq_1 = pFeed_1
+    molFracTotLiq_2 = pFeed_2
+    molFracTotLiq_3 = pFeed_3
+    molFracTotLiq_4 = pFeed_4
+    molFracTotLiq_5 = pFeed_5
+    
+    Dim sum_molFracTotLiq1 As Double
+    Dim summolFracVapFeed2 As Double
+
+    Dim myError As Double
+    myError = 1 - sum_molFracTotLiq1
+
+    Dim poolTemp_prev As Double
+    Dim counterLoop1 As Integer
+    Dim counterLoop2 As Integer
+
+    molFracVapFeed1_1 = 0#
+    molFracVapFeed1_2 = 0#
+    molFracVapFeed1_3 = 0#
+    molFracVapFeed1_4 = 0#
+    molFracVapFeed1_5 = 0#
+    Dim normalizedMolFLiq1_1 As Double
+    Dim normalizedMolFLiq1_2 As Double
+    Dim normalizedMolFLiq1_3 As Double
+    Dim normalizedMolFLiq1_4 As Double
+    Dim normalizedMolFLiq1_5 As Double
+
+    
+    &apos;*******start loop1************
+
+    For counterLoop1 = 1 To iterations
+        If counterLoop1 &gt; 1 Then
+            If (avgLiqLeakRate = 0 Or FractionRainout = 0) Then
+                poolTemp = liqTemp
+            Else
+                poolTemp = poolTemp + 0.3 * ((liqTemp * avgLiqLeakRate * FractionRainout * Molar_Cs + max_poolArea * (solar - PoolEvaporationRate * Molar_HtVap + Gnd_Coeff * Ambient_Temp)) / (avgLiqLeakRate * FractionRainout * Molar_Cs + Gnd_Coeff * max_poolArea) - poolTemp)
+            End If
+        Else
+            If (FractionRainout = 0) Then
+                poolTemp = liqTemp
+            Else
+                If (liqTemp &gt; Ambient_Temp) Then
+                    poolTemp = (liqTemp + Ambient_Temp) / 2
+                Else
+                    poolTemp = liqTemp - 10
+                End If
+            End If
+        End If
+
+        vaporPresOfkey = Math.Exp(VP_A - VP_B / (poolTemp + 273.15 - VP_C))
+
+        If pFeed_1 = 0 Then
+            ParPress_1 = 0
+        Else
+            ParPress_1 = molFracTotLiq_1 * vaporPresOfkey * Act_1 * Rel_1
+        End If
+
+        If pFeed_2 = 0 Then
+            ParPress_2 = 0
+        Else
+            ParPress_2 = molFracTotLiq_2 * vaporPresOfkey * Act_2 * Rel_2
+        End If
+
+        If pFeed_3 = 0 Then
+            ParPress_3 = 0
+        Else
+            ParPress_3 = molFracTotLiq_3 * vaporPresOfkey * Act_3 * Rel_3
+        End If
+
+        If pFeed_4 = 0 Then
+            ParPress_4 = 0
+        Else
+            ParPress_4 = molFracTotLiq_4 * vaporPresOfkey * Act_4 * Rel_4
+        End If
+
+        If pFeed_5 = 0 Then
+            ParPress_5 = 0
+        Else
+            ParPress_5 = molFracTotLiq_5 * vaporPresOfkey * Act_5 * Rel_5
+        End If
+        Sum_ParPress = ParPress_1 + ParPress_2 + ParPress_3 + ParPress_4 + ParPress_5
+
+        If counterLoop1 = 1 Then
+            If (Sum_ParPress &gt; 0) Then
+                molFracVapFeed1_1 = ParPress_1 / Sum_ParPress
+            Else
+                molFracVapFeed1_1 = 0
+            End If
+
+            If (Sum_ParPress &gt; 0) Then
+                molFracVapFeed1_2 = ParPress_2 / Sum_ParPress
+            Else
+                molFracVapFeed1_2 = 0
+            End If
+
+            If (Sum_ParPress &gt; 0) Then
+                molFracVapFeed1_3 = ParPress_3 / Sum_ParPress
+            Else
+                molFracVapFeed1_3 = 0
+            End If
+
+            If (Sum_ParPress &gt; 0) Then
+                molFracVapFeed1_4 = ParPress_4 / Sum_ParPress
+            Else
+                molFracVapFeed1_4 = 0
+            End If
+
+            If (Sum_ParPress &gt; 0) Then
+                molFracVapFeed1_5 = ParPress_5 / Sum_ParPress
+            Else
+                molFracVapFeed1_5 = 0
+            End If
+
+            If (molFracVapFeed1_1 &gt; 0) Then
+                VapMolWeight1_1 = molFracVapFeed1_1 * Mw_1
+            Else
+                VapMolWeight1_1 = 0
+            End If
+
+            If (molFracVapFeed1_2 &gt; 0) Then
+                VapMolWeight1_2 = molFracVapFeed1_2 * Mw_2
+            Else
+                VapMolWeight1_2 = 0
+            End If
+
+            If (molFracVapFeed1_3 &gt; 0) Then
+                VapMolWeight1_3 = molFracVapFeed1_3 * Mw_3
+            Else
+                VapMolWeight1_3 = 0
+            End If
+
+            If (molFracVapFeed1_4 &gt; 0) Then
+                VapMolWeight1_4 = molFracVapFeed1_4 * Mw_4
+            Else
+                VapMolWeight1_4 = 0
+            End If
+
+            If (molFracVapFeed1_5 &gt; 0) Then
+                VapMolWeight1_5 = molFracVapFeed1_5 * Mw_5
+            Else
+                VapMolWeight1_5 = 0
+            End If
+
+            sum_VapMolWeight = VapMolWeight1_1 + VapMolWeight1_2 + VapMolWeight1_3 + VapMolWeight1_4 + VapMolWeight1_5
+        End If
+        PoolEvaporationRate = 0.0021 * sum_VapMolWeight ^ -0.33 * Wind_Effective ^ 0.78 * Sum_ParPress * 101.3 / (poolTemp + 273.15)
+
+        If LeakDuration &gt; 0 Then
+            If (Dike_area = 0) Or (avgLiqLeakRate * FractionRainout * Mw_Feed / (liqDensity / (100 * LeakDuration) + PoolEvaporationRate * sum_VapMolWeight / 2) &lt; Dike_area) Then
+                max_poolArea = avgLiqLeakRate * FractionRainout * Mw_Feed / (liqDensity / (100 * LeakDuration) + PoolEvaporationRate * sum_VapMolWeight / 2)
+            Else
+                max_poolArea = Dike_area
+            End If
+        Else
+            max_poolArea = 0
+        End If
+
+        If (Dike_area = 0) Then
+            fracLeakDuration = 1
+        Else
+            If (max_poolArea &lt; Dike_area) Then
+                fracLeakDuration = 1
+            Else
+                fracLeakDuration = liqDensity / (100 * LeakDuration * (avgLiqLeakRate * FractionRainout * Mw_Feed / Dike_area - PoolEvaporationRate * sum_VapMolWeight / 2))
+            End If
+        End If
+
+        If (avgLiqLeakRate * FractionRainout &gt; 0) Then
+            If (PoolEvaporationRate * max_poolArea * (0.5 * fracLeakDuration + 1 - fracLeakDuration) / (avgLiqLeakRate * FractionRainout) &lt; 0.9) Then
+                FractionPoolEvaporation = PoolEvaporationRate * max_poolArea * (0.5 * fracLeakDuration + 1 - fracLeakDuration) / (avgLiqLeakRate * FractionRainout)
+            Else
+                FractionPoolEvaporation = 0.9
+            End If
+        Else
+            FractionPoolEvaporation = 0
+        End If
+        If counterLoop1 &lt;&gt; iterations Then
+            If Alpha_1 &lt;&gt; 0 And Alpha_1 &lt;&gt; &quot;&quot; And (Sum_ParPress &gt; 0) Then
+                molFracTotLiq_1 = pFeed_1 / (FractionPoolEvaporation * vaporPresOfkey * Alpha_1 * act_rel / Sum_ParPress + 1 - FractionPoolEvaporation)
+            Else
+                molFracTotLiq_1 = 0
+            End If
+
+            If Alpha_2 &lt;&gt; 0 And Alpha_2 &lt;&gt; &quot;&quot; And (Sum_ParPress &gt; 0) Then
+                molFracTotLiq_2 = pFeed_2 / (FractionPoolEvaporation * vaporPresOfkey * Alpha_2 * act_rel / Sum_ParPress + 1 - FractionPoolEvaporation)
+            Else
+                molFracTotLiq_2 = 0
+            End If
+
+            If Alpha_3 &lt;&gt; 0 And Alpha_3 &lt;&gt; &quot;&quot; And (Sum_ParPress &gt; 0) Then
+                molFracTotLiq_3 = pFeed_3 / (FractionPoolEvaporation * vaporPresOfkey * Alpha_3 * act_rel / Sum_ParPress + 1 - FractionPoolEvaporation)
+            Else
+                molFracTotLiq_3 = 0
+            End If
+
+            If Alpha_4 &lt;&gt; 0# And Alpha_4 &lt;&gt; &quot;&quot; And (Sum_ParPress &gt; 0) Then
+                molFracTotLiq_4 = pFeed_4 / (FractionPoolEvaporation * vaporPresOfkey * Alpha_4 * act_rel / Sum_ParPress + 1 - FractionPoolEvaporation)
+            Else
+                molFracTotLiq_4 = 0
+            End If
+
+            If Alpha_5 &lt;&gt; 0 And Alpha_5 &lt;&gt; &quot;&quot; And (Sum_ParPress &gt; 0) Then
+                molFracTotLiq_5 = pFeed_5 / (FractionPoolEvaporation * vaporPresOfkey * Alpha_5 * act_rel / Sum_ParPress + 1 - FractionPoolEvaporation)
+            Else
+                molFracTotLiq_5 = 0
+            End If
+            sum_molFracTotLiq1 = molFracTotLiq_1 + molFracTotLiq_2 + molFracTotLiq_3 + molFracTotLiq_4 + molFracTotLiq_5
+
+        ElseIf counterLoop1 = iterations Then
+
+            If (sum_molFracTotLiq1 &gt; 0) Then
+                normalizedMolFLiq1_1 = molFracTotLiq_1 / sum_molFracTotLiq1
+            Else
+                normalizedMolFLiq1_1 = 0
+            End If
+
+            If (sum_molFracTotLiq1 &gt; 0) Then
+                normalizedMolFLiq1_2 = molFracTotLiq_2 / sum_molFracTotLiq1
+            Else
+                normalizedMolFLiq1_2 = 0
+            End If
+
+            If (sum_molFracTotLiq1 &gt; 0) Then
+                normalizedMolFLiq1_3 = molFracTotLiq_3 / sum_molFracTotLiq1
+            Else
+                normalizedMolFLiq1_3 = 0
+            End If
+
+            If (sum_molFracTotLiq1 &gt; 0) Then
+                normalizedMolFLiq1_4 = molFracTotLiq_4 / sum_molFracTotLiq1
+            Else
+                normalizedMolFLiq1_4 = 0
+            End If
+
+            If (sum_molFracTotLiq1 &gt; 0) Then
+                normalizedMolFLiq1_5 = molFracTotLiq_5 / sum_molFracTotLiq1
+            Else
+                normalizedMolFLiq1_5 = 0
+            End If
+            sum_molFracTotLiq1 = normalizedMolFLiq1_1 + normalizedMolFLiq1_2 + normalizedMolFLiq1_3 + normalizedMolFLiq1_4 + normalizedMolFLiq1_5
+
+        End If
+        myError = 1 - sum_molFracTotLiq1
+
+    Next
+
+  
+
+    Dim poolrate1 As Double
+    poolrate1 = PoolEvaporationRate * sum_VapMolWeight
+
+    &apos;++++++++++++++++End loop1+++++++++++++++++
+
+    &apos;++++++++++++++++start loop2+++++++++++++++++
+    
+    Dim molFracLiqFeed2_1 As Double
+    Dim molFracLiqFeed2_2 As Double
+    Dim molFracLiqFeed2_3 As Double
+    Dim molFracLiqFeed2_4 As Double
+    Dim molFracLiqFeed2_5 As Double
+    
+    molFracLiqFeed2_1 = normalizedMolFLiq1_1
+    molFracLiqFeed2_2 = normalizedMolFLiq1_2
+    molFracLiqFeed2_3 = normalizedMolFLiq1_3
+    molFracLiqFeed2_4 = normalizedMolFLiq1_4
+    molFracLiqFeed2_5 = normalizedMolFLiq1_5
+
+    Dim initMolesInLiqPool
+
+    initPoolTemp = poolTemp
+    Dim time4PoolEvapaftrLeak As Double
+    poolArea = max_poolArea
+
+    Dim avgPoolTemp As Double
+    avgPoolTemp = poolTemp - 5
+    Dim vaporPressureOfKey2 As Double
+    Dim finalPoolEvapRate As Double
+    Dim FractionPoolEvaporation_af As Double
+    Dim FractionPoolEvaporation_old As Double
+    Dim molesLiqKey21_1 As Double
+    
+    Dim molesLiqKey21_2 As Double
+    Dim molesLiqKey21_3 As Double
+    Dim molesLiqKey21_4 As Double
+    Dim molesLiqKey21_5 As Double
+    Dim sum_molesLiqKey21 As Double
+
+    Dim molesLiqKey22_1 As Double
+    Dim molesLiqKey22_2 As Double
+    Dim molesLiqKey22_3 As Double
+    Dim molesLiqKey22_4 As Double
+    Dim molesLiqKey22_5 As Double
+    Dim sum_molesLiqKey22 As Double
+
+    Dim MolFractTotalLiquid2_1 As Double
+    Dim MolFractTotalLiquid2_2 As Double
+    Dim MolFractTotalLiquid2_3 As Double
+    Dim MolFractTotalLiquid2_4 As Double
+    Dim MolFractTotalLiquid2_5 As Double
+    
+    MolFractTotalLiquid2_1 = molFracLiqFeed2_1
+    MolFractTotalLiquid2_2 = molFracLiqFeed2_2
+    MolFractTotalLiquid2_3 = molFracLiqFeed2_3
+    MolFractTotalLiquid2_4 = molFracLiqFeed2_4
+    MolFractTotalLiquid2_5 = molFracLiqFeed2_5
+    Dim sum_MolFractTotalLiquid2 As Double
+
+    Dim ParPress2_1 As Double
+    Dim ParPress2_2 As Double
+    Dim ParPress2_3 As Double
+    Dim ParPress2_4 As Double
+    Dim ParPress2_5 As Double
+    Sum_ParPress2 = 0#
+
+    Dim myError2 As Double
+    FractionPoolEvaporation_af = 0.5
+    sum_MolFractTotalLiquid2 = 1
+
+    Dim molFracVapFeed2_1 As Double
+    Dim molFracVapFeed2_2 As Double
+    Dim molFracVapFeed2_3 As Double
+    Dim molFracVapFeed2_4 As Double
+    Dim molFracVapFeed2_5 As Double
+
+    VapMolWeight2_1 = 0#
+    VapMolWeight2_2 = 0#
+    VapMolWeight2_3 = 0#
+    VapMolWeight2_4 = 0#
+    VapMolWeight2_5 = 0#
+    sum_VapMolWeight2 = 0#
+
+    Dim MolLiquidMolInitPool_1 As Double
+    Dim MolLiquidMolInitPool_2 As Double
+    Dim MolLiquidMolInitPool_3 As Double
+    Dim MolLiquidMolInitPool_4 As Double
+    Dim MolLiquidMolInitPool_5 As Double
+
+    If (FractionPoolEvaporation &lt; 1) Then
+        initMolesInLiqPool = avgLiqLeakRate * FractionRainout * (1 - FractionPoolEvaporation) * LeakDuration
+    Else
+        initMolesInLiqPool = 0
+    End If
+
+    time4PoolEvapaftrLeak = MaxDuration - LeakDuration
+
+    counterLoop2 = 1
+    For counterLoop2 = 1 To iterations
+
+        If counterLoop2 &gt; 1 Then
+            If (initMolesInLiqPool &gt; 0 And time4PoolEvapaftrLeak &gt; 0) Then
+                avgPoolTemp = avgPoolTemp + 0.3 * ((2 * initMolesInLiqPool * Molar_Cs * initPoolTemp + poolArea * time4PoolEvapaftrLeak * (solar - finalPoolEvapRate * Molar_HtVap + Gnd_Coeff * Ambient_Temp)) / (2 * initMolesInLiqPool * Molar_Cs + Gnd_Coeff * poolArea * time4PoolEvapaftrLeak) - avgPoolTemp)
+            Else
+                avgPoolTemp = initPoolTemp
+            End If
+        Else
+            avgPoolTemp = poolTemp - 5
+        End If
+        
+        vaporPressureOfKey2 = Math.Exp(VP_A - VP_B / (avgPoolTemp + 273.15 - VP_C))
+        
+        
+    &apos;********Allow multiple trials of fraction evaporated per trial of tempterature*******
+        
+        For counterLoop3 = 1 To 3
+        
+            If molFracLiqFeed2_1 = 0 Then
+                ParPress2_1 = 0
+                InitParPress2_1 = 0
+            Else
+                ParPress2_1 = MolFractTotalLiquid2_1 * vaporPressureOfKey2 * Act_1 * Rel_1 / sum_MolFractTotalLiquid2
+                InitParPress2_1 = molFracLiqFeed2_1 * vaporPressureOfKey2 * Act_1 * Rel_1
+            End If
+        
+            If molFracLiqFeed2_2 = 0 Then
+                ParPress2_2 = 0
+                InitParPress2_2 = 0
+            Else
+                ParPress2_2 = MolFractTotalLiquid2_2 * vaporPressureOfKey2 * Act_2 * Rel_2 / sum_MolFractTotalLiquid2
+                InitParPress2_2 = molFracLiqFeed2_2 * vaporPressureOfKey2 * Act_2 * Rel_2
+            End If
+        
+            If molFracLiqFeed2_3 = 0 Then
+                ParPress2_3 = 0
+                InitParPress2_3 = 0
+            Else
+                ParPress2_3 = MolFractTotalLiquid2_3 * vaporPressureOfKey2 * Act_3 * Rel_3 / sum_MolFractTotalLiquid2
+                InitParPress2_3 = molFracLiqFeed2_3 * vaporPressureOfKey2 * Act_3 * Rel_3
+            End If
+        
+            If molFracLiqFeed2_4 = 0 Then
+                ParPress2_4 = 0
+                InitParPress2_4 = 0
+            Else
+                ParPress2_4 = MolFractTotalLiquid2_4 * vaporPressureOfKey2 * Act_4 * Rel_4 / sum_MolFractTotalLiquid2
+                InitParPress2_4 = molFracLiqFeed2_4 * vaporPressureOfKey2 * Act_4 * Rel_4
+            End If
+        
+            If molFracLiqFeed2_5 = 0 Then
+                ParPress2_5 = 0
+                InitParPress2_5 = 0
+            Else
+                ParPress2_5 = MolFractTotalLiquid2_5 * vaporPressureOfKey2 * Act_5 * Rel_5 / sum_MolFractTotalLiquid2
+                InitParPress2_5 = molFracLiqFeed2_5 * vaporPressureOfKey2 * Act_5 * Rel_5
+            End If
+            
+            Sum_ParPress2 = ParPress2_1 + ParPress2_2 + ParPress2_3 + ParPress2_4 + ParPress2_5
+            Sum_InitParPress2 = InitParPress2_1 + InitParPress2_2 + InitParPress2_3 + InitParPress2_4 + InitParPress2_5
+            
+            If counterLoop2 = 1 Then
+                If (Sum_ParPress2 &gt; 0) Then
+                    molFracVapFeed2_1 = ParPress2_1 / Sum_ParPress2
+                Else
+                    molFracVapFeed2_1 = 0
+                End If
+        
+                If (Sum_ParPress2 &gt; 0) Then
+                    molFracVapFeed2_2 = ParPress2_2 / Sum_ParPress2
+                Else
+                    molFracVapFeed2_2 = 0
+                End If
+        
+                If (Sum_ParPress2 &gt; 0) Then
+                    molFracVapFeed2_3 = ParPress2_3 / Sum_ParPress2
+                Else
+                    molFracVapFeed2_3 = 0
+                End If
+        
+                If (Sum_ParPress2 &gt; 0) Then
+                    molFracVapFeed2_4 = ParPress2_4 / Sum_ParPress2
+                Else
+                    molFracVapFeed2_4 = 0
+                End If
+        
+                If (Sum_ParPress2 &gt; 0) Then
+                    molFracVapFeed2_5 = ParPress2_5 / Sum_ParPress2
+                Else
+                    molFracVapFeed2_5 = 0
+                End If
+                
+                summolFracVapFeed2 = molFracVapFeed2_1 + molFracVapFeed2_2 + molFracVapFeed2_3 + molFracVapFeed2_4 + molFracVapFeed2_5
+        
+                If Mw_1 &lt;&gt; 0 And molFracVapFeed2_1 &gt; 0 Then
+                    VapMolWeight2_1 = molFracVapFeed2_1 * Mw_1
+                Else
+                    VapMolWeight2_1 = 0
+                End If
+        
+                If Mw_2 &lt;&gt; 0 And molFracVapFeed2_2 &gt; 0 Then
+                    VapMolWeight2_2 = molFracVapFeed2_2 * Mw_2
+                Else
+                    VapMolWeight2_2 = 0
+                End If
+        
+                If Mw_3 &lt;&gt; 0 And molFracVapFeed2_3 &gt; 0 Then
+                    VapMolWeight2_3 = molFracVapFeed2_3 * Mw_3
+                Else
+                    VapMolWeight2_3 = 0
+                End If
+        
+                If Mw_4 &lt;&gt; 0 And molFracVapFeed2_4 &gt; 0 Then
+                    VapMolWeight2_4 = molFracVapFeed2_4 * Mw_4
+                Else
+                    VapMolWeight2_4 = 0
+                End If
+        
+                If Mw_5 &lt;&gt; 0 And molFracVapFeed2_5 &gt; 0 Then
+                    VapMolWeight2_5 = molFracVapFeed2_5 * Mw_5
+                Else
+                    VapMolWeight2_5 = 0
+                End If
+        
+                sum_VapMolWeight2 = VapMolWeight2_1 + VapMolWeight2_2 + VapMolWeight2_3 + VapMolWeight2_4 + VapMolWeight2_5
+                
+            End If
+        
+    &apos;****base liquid vapor pressure on 1/2 the initial and final values at the trial temperature****
+            
+            finalPoolEvapRate = 0.0021 * sum_VapMolWeight2 ^ -0.33 * Wind_Effective ^ 0.78 * 0.5 * (Sum_InitParPress2 + Sum_ParPress2) * 101.3 / (avgPoolTemp + 273.15)
+            
+            FractionPoolEvaporation_old = FractionPoolEvaporation_af
+            
+            If (initMolesInLiqPool = 0) Then
+                FractionPoolEvaporation_af = 0
+            Else
+                If (FractionPoolEvaporation_old - 0.3 * myError2 &lt; (1 + FractionPoolEvaporation_old) / 2) Then
+                    FractionPoolEvaporation_af = FractionPoolEvaporation_old - 0.3 * myError2
+                Else
+                    FractionPoolEvaporation_af = (1 + FractionPoolEvaporation_old) / 2
+                End If
+               
+                If FractionPoolEvaporation_af &lt; 0.0001 Then FractionPoolEvaporation_af = 0.0001
+               
+            End If
+            If counterLoop2 = 1 Then
+                If ((Alpha_1) = 1) Then
+                    molesLiqKey21_1 = molFracLiqFeed2_1
+                Else
+                    molesLiqKey21_1 = 0
+                End If
+        
+                If ((Alpha_2) = 1) Then
+                    molesLiqKey21_2 = molFracLiqFeed2_2
+                Else
+                    molesLiqKey21_2 = 0
+                End If
+        
+                If ((Alpha_3) = 1) Then
+                    molesLiqKey21_3 = molFracLiqFeed2_3
+                Else
+                    molesLiqKey21_3 = 0
+                End If
+        
+                If ((Alpha_4) = 1) Then
+                    molesLiqKey21_4 = molFracLiqFeed2_4
+                Else
+                    molesLiqKey21_4 = 0
+                End If
+        
+                If ((Alpha_5) = 1) Then
+                    molesLiqKey21_5 = molFracLiqFeed2_5
+                Else
+                    molesLiqKey21_5 = 0
+                End If
+        
+                sum_molesLiqKey21 = molesLiqKey21_1 + molesLiqKey21_2 + molesLiqKey21_3 + molesLiqKey21_4 + molesLiqKey21_5
+            End If
+            If ((Alpha_1) = 1) Then
+                molesLiqKey22_1 = (1 - FractionPoolEvaporation_af) * molFracLiqFeed2_1
+            Else
+                molesLiqKey22_1 = 0
+            End If
+        
+            If ((Alpha_2) = 1) Then
+                molesLiqKey22_2 = (1 - FractionPoolEvaporation_af) * molFracLiqFeed2_2
+            Else
+                molesLiqKey22_2 = 0
+            End If
+        
+            If ((Alpha_3) = 1) Then
+                molesLiqKey22_3 = (1 - FractionPoolEvaporation_af) * molFracLiqFeed2_3
+            Else
+                molesLiqKey22_3 = 0
+            End If
+        
+            If ((Alpha_4) = 1) Then
+                molesLiqKey22_4 = (1 - FractionPoolEvaporation_af) * molFracLiqFeed2_4
+            Else
+                molesLiqKey22_4 = 0
+            End If
+        
+            If ((Alpha_5) = 1) Then
+                molesLiqKey22_5 = (1 - FractionPoolEvaporation_af) * molFracLiqFeed2_5
+            Else
+                molesLiqKey22_5 = 0
+            End If
+            
+            sum_molesLiqKey22 = molesLiqKey22_1 + molesLiqKey22_2 + molesLiqKey22_3 + molesLiqKey22_4 + molesLiqKey22_5
+        
+            If (Alpha_1 &lt;&gt; &quot;&quot; And (sum_molesLiqKey22 &gt; 0 And sum_molesLiqKey21 &gt; 0) And FractionPoolEvaporation_af &lt; 1) Then
+                MolFractTotalLiquid2_1 = molFracLiqFeed2_1 * Exp(Alpha_1 * Log(sum_molesLiqKey22 / sum_molesLiqKey21))
+            Else
+                MolFractTotalLiquid2_1 = 0
+            End If
+        
+            If (Alpha_2 &lt;&gt; &quot;&quot; And (sum_molesLiqKey22 &gt; 0 And sum_molesLiqKey21 &gt; 0) And FractionPoolEvaporation_af &lt; 1) Then
+                MolFractTotalLiquid2_2 = molFracLiqFeed2_2 * Exp(Alpha_2 * Log(sum_molesLiqKey22 / sum_molesLiqKey21))
+            Else
+                MolFractTotalLiquid2_2 = 0
+            End If
+        
+            If (Alpha_3 &lt;&gt; &quot;&quot; And (sum_molesLiqKey22 &gt; 0 And sum_molesLiqKey21 &gt; 0) And FractionPoolEvaporation_af &lt; 1) Then
+                MolFractTotalLiquid2_3 = molFracLiqFeed2_3 * Exp(Alpha_3 * Log(sum_molesLiqKey22 / sum_molesLiqKey21))
+            Else
+                MolFractTotalLiquid2_3 = 0
+            End If
+        
+            If (Alpha_4 &lt;&gt; &quot;&quot; And (sum_molesLiqKey22 &gt; 0 And sum_molesLiqKey21 &gt; 0) And FractionPoolEvaporation_af &lt; 1) Then
+                MolFractTotalLiquid2_4 = molFracLiqFeed2_4 * Exp(Alpha_4 * Log(sum_molesLiqKey22 / sum_molesLiqKey21))
+            Else
+                MolFractTotalLiquid2_4 = 0
+            End If
+        
+            If (Alpha_5 &lt;&gt; &quot;&quot; And (sum_molesLiqKey22 &gt; 0 And sum_molesLiqKey21 &gt; 0) And FractionPoolEvaporation_af &lt; 1) Then
+                MolFractTotalLiquid2_5 = molFracLiqFeed2_5 * Exp(Alpha_5 * Log(sum_molesLiqKey22 / sum_molesLiqKey21))
+            Else
+                MolFractTotalLiquid2_5 = 0
+            End If
+        
+            sum_MolFractTotalLiquid2 = MolFractTotalLiquid2_1 + MolFractTotalLiquid2_2 + MolFractTotalLiquid2_3 + MolFractTotalLiquid2_4 + MolFractTotalLiquid2_5
+        
+            myError2 = 1 - sum_MolFractTotalLiquid2 - poolArea * finalPoolEvapRate * time4PoolEvapaftrLeak / initMolesInLiqPool
+            If sum_MolFractTotalLiquid2 &lt; 0.0001 Then myError2 = 0
+            
+        Next counterLoop3
+
+    &apos;++++++++++++++++++++++end of multiple trials for fraction evaporated******************
+    
+    Next counterLoop2
+
+    If sum_MolFractTotalLiquid2 &lt;&gt; 0 Then
+        normalizedMolFLiq1_1 = MolFractTotalLiquid2_1 / sum_MolFractTotalLiquid2
+        normalizedMolFLiq1_2 = MolFractTotalLiquid2_2 / sum_MolFractTotalLiquid2
+        normalizedMolFLiq1_3 = MolFractTotalLiquid2_3 / sum_MolFractTotalLiquid2
+        normalizedMolFLiq1_4 = MolFractTotalLiquid2_4 / sum_MolFractTotalLiquid2
+        normalizedMolFLiq1_5 = MolFractTotalLiquid2_5 / sum_MolFractTotalLiquid2
+    End If
+    
+    Dim finalPoolevaporationRate As Double
+    finalPoolevaporationRate = finalPoolEvapRate * sum_VapMolWeight2
+
+    If pFeed_1 &gt; 0 Then
+        If Alpha_1 &lt; 0.0000000001 Or (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_1 / pFeed_1 &gt; 1 Then
+            MolLiquidMolInitPool_1 = 1
+        Else
+            MolLiquidMolInitPool_1 = (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_1 / pFeed_1
+        End If
+    Else
+        MolLiquidMolInitPool_1 = 0
+    End If
+
+    If pFeed_2 &gt; 0 Then
+        If (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_2 / pFeed_2 &gt; 1 Then
+            MolLiquidMolInitPool_2 = 1
+        Else
+            MolLiquidMolInitPool_2 = (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_2 / pFeed_2
+        End If
+    Else
+        MolLiquidMolInitPool_2 = 0
+    End If
+
+    If pFeed_3 &gt; 0 Then
+        If (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_3 / pFeed_3 &gt; 1 Then
+            MolLiquidMolInitPool_3 = 1
+        Else
+            MolLiquidMolInitPool_3 = (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_3 / pFeed_3
+        End If
+    Else
+        MolLiquidMolInitPool_3 = 0
+    End If
+
+    If pFeed_4 &gt; 0 Then
+        If (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_4 / pFeed_4 &gt; 1 Then
+            MolLiquidMolInitPool_4 = 1
+        Else
+            MolLiquidMolInitPool_4 = (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_4 / pFeed_4
+        End If
+    Else
+        MolLiquidMolInitPool_4 = 0
+    End If
+
+    If pFeed_5 &gt; 0 Then
+        If (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_5 / pFeed_5 &gt; 1 Then
+            MolLiquidMolInitPool_5 = 1
+        Else
+            MolLiquidMolInitPool_5 = (1 - FractionPoolEvaporation_af) * (1 - FractionPoolEvaporation) * normalizedMolFLiq1_5 / pFeed_5
+        End If
+    Else
+        MolLiquidMolInitPool_5 = 0
+    End If
+
+    poolRoutine = Application.Transpose(Array(poolTemp, poolrate1, avgPoolTemp, finalPoolevaporationRate, max_poolArea, fracLeakDuration, MolLiquidMolInitPool_1, MolLiquidMolInitPool_2, MolLiquidMolInitPool_3, MolLiquidMolInitPool_4, MolLiquidMolInitPool_5, myError2))
+
+End Function
+
+
+
+Public Function estimateOfMulticomponentDistillation(ByVal num_trials As Integer, ByVal FractVaporized As Double, _
+    ByVal Feed_1 As Double, ByVal Feed_2 As Double, ByVal Feed_3 As Double, ByVal Feed_4 As Double, ByVal Feed_5 As Double, _
+    ByVal Alpha_1 As Variant, ByVal Alpha_2 As Variant, ByVal Alpha_3 As Variant, ByVal Alpha_4 As Variant, ByVal Alpha_5 As Variant)
+  
+&apos;******estimate liquid composition from simple Reileigh Distillation at constant relative volatility******
+&apos;  Evaporation from Heat Input
+&apos;  Simple Batch Distillation (Rayleigh Distillation) at Constant Relative Volatility
+&apos;     (ref: Perry&apos;s Chemical Engineers&apos; Handbook)
+&apos;  Vapor-Liquid Equilibrium Ratio, Ki = yi / xi
+&apos;    Relative Volatility, ai = Ki / Kkey = yi xkey / ( xi ykey )
+&apos;  Ratio of final to initial moles liquid,  ln [ MiFinal / MiInitial ] = ai  ln [ MkeyFinal / MkeyInitial
+
+
+    Dim molFracLiq_1 As Double
+    Dim molFracLiq_2 As Double
+    Dim molFracLiq_3 As Double
+    Dim molFracLiq_4 As Double
+    Dim molFracLiq_5 As Double
+    
+    Dim sumFractLiq As Double
+    sumFractLiq = 1
+    Dim Trial_FractLiq As Double
+    Dim Trial_old As Double
+    Trial_FractLiq = 1 - FractVaporized
+    Dim FlashError As Double
+    
+    molFractLiq_1 = Feed_1
+    molFractLiq_2 = Feed_2
+    molFractLiq_3 = Feed_3
+    molFractLiq_4 = Feed_4
+    molFractLiq_5 = Feed_5
+      
+    
+    For counterLoop = 1 To num_trials
+    
+        Trial_old = Trial_FractLiq
+        
+        molFractLiq_1 = Feed_1 * Exp(Log(Trial_FractLiq) * Alpha_1)
+        molFractLiq_2 = Feed_2 * Exp(Log(Trial_FractLiq) * Alpha_2)
+        molFractLiq_3 = Feed_3 * Exp(Log(Trial_FractLiq) * Alpha_3)
+        molFractLiq_4 = Feed_4 * Exp(Log(Trial_FractLiq) * Alpha_4)
+        molFractLiq_5 = Feed_5 * Exp(Log(Trial_FractLiq) * Alpha_5)
+        
+        sumFractLiq = molFractLiq_1 + molFractLiq_2 + molFractLiq_3 + molFractLiq_4 + molFractLiq_5
+    
+        FlashError = sumFractLiq + FractVaporized - 1
+
+        Trial_FractLiq = (1 - FractVaporized) * Trial_old / sumFractLiq
+        If Trial_FractLiq &lt; 10 ^ -30 Then Trial_FractLiq = 10 ^ -30
+        If Trial_FractLiq &gt; 0.9999 Then Trial_FractLiq = 0.9999
+        
+    Next
+    
+    If sumFractLiq &gt; 0 Then normalizedFractLiq_1 = molFractLiq_1 / sumFractLiq
+    If sumFractLiq &gt; 0 Then normalizedFractLiq_2 = molFractLiq_2 / sumFractLiq
+    If sumFractLiq &gt; 0 Then normalizedFractLiq_3 = molFractLiq_3 / sumFractLiq
+    If sumFractLiq &gt; 0 Then normalizedFractLiq_4 = molFractLiq_4 / sumFractLiq
+    If sumFractLiq &gt; 0 Then normalizedFractLiq_5 = molFractLiq_5 / sumFractLiq
+    
+
+    estimateOfMulticomponentDistillation = Application.Transpose(Array(normalizedFractLiq_1, normalizedFractLiq_2, normalizedFractLiq_3, normalizedFractLiq_4, normalizedFractLiq_5, FlashError))
+
+End Function
+
+</script:module>

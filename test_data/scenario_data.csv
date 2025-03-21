@@ -1,0 +1,6 @@
+Scenario_ID,Equipment_ID,Hazard_Type,Deviation,Cause,Consequence,Likelihood,Severity,Risk_Score,Existing_Safeguards
+SCN-001,EQ-001,Process Safety,High Pressure,Control Valve Failure,Vessel Rupture,3,5,15,Pressure Relief Valve|High Pressure Alarm
+SCN-002,EQ-001,Process Safety,High Temperature,Cooling System Failure,Runaway Reaction,2,4,8,Temperature Alarm|Emergency Cooling System
+SCN-003,EQ-002,Environmental,Leak,Gasket Failure,Chemical Release,3,3,9,Secondary Containment|Leak Detection
+SCN-004,EQ-003,Process Safety,Overflow,Level Control Failure,Tank Overflow,2,3,6,High Level Alarm|Level Indicator
+SCN-005,EQ-004,Personal Safety,Seal Failure,Mechanical Wear,Chemical Exposure,3,4,12,Seal Monitoring|PPE Requirements

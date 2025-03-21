@@ -1,0 +1,1054 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Calculate" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Public user_scenario_update_failed
+Sub Calculate_All_Equipment()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    macrorunning = True
+    Set etw = ThisWorkbook.Worksheets(&quot;Equipment Table&quot;)
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    Set idw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+    Set cdw = ThisWorkbook.Worksheets(&quot;Chemical Data&quot;)
+    Sort_Scenario_Results
+    Tag_r = etw.Range(&quot;T_Equipment_Tag&quot;).Row
+    Tag_c = etw.Range(&quot;T_Equipment_Tag&quot;).Column
+    Header_No = Application.WorksheetFunction.CountA(etw.Range(etw.Cells(1, Tag_c).Address, etw.Cells(Tag_r, Tag_c).Address))
+    eq_no = Application.WorksheetFunction.CountA(etw.Columns(etw.Range(&quot;T_Equipment_Tag&quot;).Column)) - Header_No
+    If eq_no = 0 Then
+        GoTo finish
+    End If
+    etw.Activate
+    response = vbNullString
+    response = MsgBox(&quot;ALL equipment in table will be updated, this will take time.&quot; &amp; Chr(13) &amp; &quot;Are you sure you want to continue?&quot;, vbOKCancel)
+    Select Case response
+    Case vbCancel
+        GoTo finish
+    Case vbOK
+        etw.Range(&quot;T_Equipment_Tag&quot;).Offset(1, 0).Select
+    End Select
+    Num = 0
+    equipment_errors = vbNullString
+    equip_calculated = 0
+    ActiveCell.Interior.ColorIndex = xlNone
+    flag_user_scenario_update_failed = False
+    Do While Not ActiveCell.Value = &quot;&quot;
+        Load_Equipment
+        Application.Calculate
+        If Not mmw.Range(&quot;Error_Count&quot;).Value = &quot;Input Data Sufficient to Proceed with Analysis&quot; Then
+            etw.Activate
+            ActiveCell.Interior.ColorIndex = 3
+            If equipment_errors = &quot;&quot; Then
+                equipment_errors = ActiveCell.Value
+            Else
+                equipment_errors = equipment_errors &amp; &quot;, &quot; &amp; ActiveCell.Value
+            End If
+        Else
+            etw.Activate
+            ActiveCell.Interior.ColorIndex = xlNone
+            equip_calculated = equip_calculate + 1
+            Calculate_Scenarios
+            If user_scenario_update_failed = True Then
+                flag_user_scenario_update_failed = True
+            End If
+            Save_Equipment
+        End If
+        etw.Activate
+        ActiveCell.Offset(1, 0).Activate
+        Application.ScreenUpdating = True
+        Application.GoTo reference:=ActiveCell, scroll:=True
+        Application.ScreenUpdating = False
+        Num = Num + 1
+    Loop
+    macrorunning = False
+    If srw.FilterMode = True Then
+        currentFiltRange = srw.AutoFilter.Range.Address
+        srw.Range(currentFiltRange).AutoFilter
+        srw.Range(currentFiltRange).AutoFilter
+    End If
+    If equip_calculated &gt; 0 Then
+        Application.StatusBar = &quot;Formatting Scenario Results&quot;
+        srw.Activate
+        
+        R = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) + srw.Range(&quot;Out_Scenario_No&quot;).Row - 2
+        c = srw.UsedRange.Columns.Count
+&apos;        c = srw.Range(&quot;Out_New_Hazard&quot;).Column
+        If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row + 1 Then
+            With srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, 1), srw.Cells(R, c))
+                .Borders(xlEdgeLeft).LineStyle = xlContinuous
+                .Borders(xlEdgeTop).LineStyle = xlContinuous
+                .Borders(xlEdgeBottom).LineStyle = xlContinuous
+                .Borders(xlEdgeRight).LineStyle = xlContinuous
+                .Borders(xlInsideVertical).LineStyle = xlContinuous
+                If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+                    .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+                End If
+            End With
+            For Each calc In srw.Range(&quot;Out_Release_Calcs&quot;)
+                If UCase(Right(calc.Offset(0, 1).Name.Name, 5)) = &quot;UNITS&quot; Then
+                    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).Borders(xlEdgeRight).LineStyle = xlNone
+                    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).HorizontalAlignment = xlRight
+                    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column + 1), srw.Cells(R, calc.Column + 1)).HorizontalAlignment = xlLeft
+                End If
+            Next calc
+        End If
+        
+        With srw.Range(srw.Range(&quot;Out_Credible&quot;).Offset(1, 0), srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column)).Validation
+            .Delete
+            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
+            xlBetween, Formula1:=&quot;Yes,No&quot;
+            .IgnoreBlank = True
+            .InCellDropdown = True
+            .InputTitle = &quot;&quot;
+            .ErrorTitle = &quot;&quot;
+            .InputMessage = &quot;&quot;
+            .ErrorMessage = &quot;&quot;
+            .ShowInput = True
+            .ShowError = True
+        End With
+    
+        Application.StatusBar = &quot;Evaluating Scenario Results&quot;
+        Evaluate_Scenario_Results
+    
+        ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Activate
+        ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Range(&quot;Out_Credible&quot;).Offset(1, 0).Activate
+        Application.StatusBar = False
+        Application.Calculation = xlCalculationAutomatic
+        On Error Resume Next
+        currentFiltRange = srw.AutoFilter.Range.Address
+        srw.Range(currentFiltRange).AutoFilter
+        srw.Range(currentFiltRange).AutoFilter
+    End If
+    ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Activate
+    Range(&quot;a1&quot;).Select
+    Sort_Scenario_Results
+    If Num &lt; eq_no Then
+        MsgBox &quot;CAUTION: Not all rows in Equipment Table calculated, execution ended at blank cell.&quot;
+    End If
+    If Not equipment_errors = &quot;&quot; Then
+        MsgBox &quot;ERROR: The following equipment (highlighted red on Equipment Table) was not calculated due to critical errors in inputs.&quot; &amp; Chr(13) &amp; &quot;Load each equipment and look at Input Error Check&quot; &amp; Chr(13) &amp; Chr(13) &amp; equipment_errors
+        etw.Activate
+    End If
+    If flag_user_scenario_update_failed = True Then
+        MsgBox &quot;Problem with user scenario inputs.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;User scenario(s) with errors not updated.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Check cells marked red in Scenario Results and use Modify User Scenario button to check inputs versus calculations.&quot;
+    End If
+
+finish:
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    re = 0
+    calculate_only_running = False
+    macrorunning = False
+End Sub
+Sub Calculate_Scenarios()
+      Dim Equipment As String, calc_result() As String
+      Dim CausesArray() As String, CauseDesc() As String, IEF() As Integer, IncidentArray() As Boolean, IPL_Required As Integer, POI_Value As Integer, TEF_Value As Integer
+      Dim BPCSDesc() As String, AlarmDesc() As String, SIS1Desc() As String, ReliefDesc() As String, SRPS1Desc() As String, SRPS1Gen() As String
+      Dim Suggested_IPLs As String
+
+10    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+20    Set idw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+30    Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+40    Set saw = ThisWorkbook.Worksheets(&quot;Scenario Analysis&quot;)
+50    Set rcw = ThisWorkbook.Worksheets(&quot;Release Calculations&quot;)
+60    Set scw = ThisWorkbook.Worksheets(&quot;Special Calcs&quot;)
+70    Set cdw = ThisWorkbook.Worksheets(&quot;Chemical Data&quot;)
+80    Set iew = ThisWorkbook.Worksheets(&quot;Input Error Check&quot;)
+90    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+100   Set pcw = ThisWorkbook.Worksheets(&quot;Process Conditions&quot;)
+110   Set plw = ThisWorkbook.Worksheets(&quot;Plant Layout&quot;)
+120   On Error GoTo Error_Handling
+130   If macrorunning = False Then
+140       If Not mmw.Range(&quot;Error_Count&quot;).Value = &quot;Input Data Sufficient to Proceed with Analysis&quot; Then
+150           MsgBox &quot;Input error check found critical errors.  Execution terminated, use Check Input button, correct errors, and recalculate.&quot;
+160           Exit Sub
+170       End If
+180       Application.ScreenUpdating = False
+190       Application.Calculation = xlCalculationManual
+200       calculate_only_running = True
+210       macrorunning = True
+220   End If
+230   Check_Input_Data
+240   Check_Property_Input
+250   siw.Activate
+260   Show_All_Scenarios
+270   If srw.FilterMode = True Then
+280       currentFiltRange = srw.AutoFilter.Range.Address
+290       srw.Range(currentFiltRange).AutoFilter
+300       srw.Range(currentFiltRange).AutoFilter
+310   End If
+
+320   R = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) + srw.Range(&quot;Out_Scenario_No&quot;).Row - 2
+330   c = srw.UsedRange.Columns.Count
+340   srw.Activate
+
+350   If srw.Range(&quot;Out_Scenario_No&quot;).Row &lt; R And macrorunning = False Then
+360     Sort_Scenario_Results
+370   End If
+380   re = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Equip_Tag&quot;).Column)) - 1
+390   R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+400   r_eq_start = 0
+410   r_eq_end = 0
+420   For W = 1 To re
+430       If srw.Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column) = mmw.Range(&quot;Equipment_Tag&quot;).Value Then
+440           If r_eq_start = 0 Then
+450               r_eq_start = R
+460           End If
+470           r_eq_end = R
+480           If srw.Cells(R, srw.Range(&quot;Out_Source&quot;).Column).Value = &quot;Tool&quot; Then
+490               srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Eliminated&quot;
+495               srw.Cells(R, srw.Range(&quot;Out_Source&quot;).Column).Value = &quot;Tool&quot;
+502           Else
+510               srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Update Failed&quot;
+520           End If
+530           srw.Rows(R).Interior.ColorIndex = xlNone
+540           srw.Rows(R).ClearComments
+550       End If
+560       R = R + 1
+570   Next W
+580   If r_eq_end = 0 And r_eq_start = 0 Then
+590       r_eq = 0
+600   Else
+610       r_eq = r_eq_end - r_eq_start + 1
+620   End If
+630   Scenario_ID = Int(Application.WorksheetFunction.Max(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column))) + 1
+640   Equipment = mmw.Range(&quot;Equipment&quot;).Value
+650   equipment_column = siw.Range(&quot;Equipment_Type&quot;).Find(Equipment).Column
+660   R = srw.Range(&quot;Out_Scenario_Type&quot;).Row + 1
+670   Scenario_Num = 1
+
+
+730   For Each scenario_type In siw.Range(&quot;Scenario_Type&quot;)
+740       x = 0
+750       If Not IsError(siw.Cells(scenario_type.Row, siw.Range(&quot;Suggested_IPLs&quot;).Column)) Then
+760           Suggested_IPLs = siw.Cells(scenario_type.Row, siw.Range(&quot;Suggested_IPLs&quot;).Column).Value
+770           Else
+780           Suggested_IPLs = vbNullString
+790       End If
+          
+800       For Each rupture_incident In siw.Range(&quot;Time_to_Rupture&quot;)
+810         Time_Num = &quot;&quot;
+820         Time_Unit = &quot;&quot;
+830         Time_to_Event = siw.Cells(scenario_type.Row, rupture_incident.Column).Value
+840         If Not IsError(Time_to_Event) Then
+850             If Not Time_to_Event = &quot;&quot; Then
+860                 Space_Loc = InStr(1, Time_to_Event, &quot; &quot;, vbTextCompare)
+870                 If Space_Loc &gt; 0 Then
+880                     Time_Num = Left(Time_to_Event, Space_Loc - 1)
+890                     Time_Unit = Right(Time_to_Event, Len(Time_to_Event) - Space_Loc)
+900                 End If
+910             End If
+920         End If
+930         saw.Cells(saw.Range(&quot;Rupture_Incidents&quot;).Offset(x, 0).Row, saw.Range(&quot;Time_to_Event&quot;).Column).Value = Time_Num
+940         saw.Cells(saw.Range(&quot;Rupture_Incidents&quot;).Offset(x, 0).Row, saw.Range(&quot;Time_to_Event_Units&quot;).Column).Value = Time_Unit
+950         x = x + 1
+960       Next rupture_incident
+          
+970       Application.StatusBar = &quot;Calculating &quot; &amp; mmw.Range(&quot;Equipment_Tag&quot;).Value &amp; &quot;: &quot; &amp; scenario_type.Value
+980       If Not IsError(siw.Cells(scenario_type.Row, equipment_column)) Then
+990           If Not siw.Cells(scenario_type.Row, equipment_column) = &quot;&quot; And siw.Cells(scenario_type.Row, siw.Range(&quot;Team_Selection&quot;).Column).Value = &quot;X&quot; Then
+1000              noie = Application.WorksheetFunction.CountIf(siw.Range(&quot;Initiating_Event&quot;).Offset(scenario_type.Row - siw.Range(&quot;Initiating_Event&quot;).Row, 0), &quot;X&quot;)
+1010              If noie &gt; 0 Then
+1020                  ReDim CausesArray(noie)
+1030                  ReDim CauseDesc(noie)
+1040                  ReDim BPCSDesc(noie)
+1050                  ReDim AlarmDesc(noie)
+1060                  ReDim SIS1Desc(noie)
+1070                  ReDim IEF(noie)
+1080                  x = 1
+1090                  For Each cause In siw.Range(&quot;Initiating_Event&quot;)
+1100                      If Not siw.Cells(scenario_type.Row, cause.Column) = &quot;&quot; Then
+1110                          CausesArray(x) = cause.Value
+1120                          CauseDesc(x) = siw.Cells(siw.Range(&quot;Scenario_Type2&quot;).Offset(Scenario_Num, 0).Row, cause.Column).Value
+1130                          BPCSDesc(x) = siw.Cells(siw.Range(&quot;Scenario_Type3&quot;).Offset(Scenario_Num, 0).Row, cause.Column).Value
+1140                          AlarmDesc(x) = siw.Cells(siw.Range(&quot;Scenario_Type4&quot;).Offset(Scenario_Num, 0).Row, cause.Column).Value
+1150                          SIS1Desc(x) = siw.Cells(siw.Range(&quot;Scenario_Type5&quot;).Offset(Scenario_Num, 0).Row, cause.Column).Value
+1160                          IEF(x) = cause.Offset(1, 0).Value
+1170                          x = x + 1
+1180                      End If
+1190                  Next cause
+1200                  x = 1
+1210                  NoI = Application.WorksheetFunction.CountA(Range(&quot;Incident&quot;))
+1220                  ReDim IncidentArray(NoI)
+1230                  ReDim ReliefDesc(NoI)
+1240                  ReDim SRPS1Desc(NoI)
+1250                  ReDim SRPS1Gen(NoI)
+                      ReDim relief_effluent_case(NoI)
+1260                  For Each incident In siw.Range(&quot;Incident&quot;)
+1270                      If Not IsError(siw.Cells(scenario_type.Row, incident.Column)) Then
+1280                          If siw.Cells(scenario_type.Row, incident.Column) = &quot;X&quot; Then
+1290                              IncidentArray(x) = 1
+1300                              ReliefDesc(x) = siw.Cells(siw.Range(&quot;Scenario_Type2&quot;).Offset(Scenario_Num, 0).Row, incident.Column).Value
+1310                              SRPS1Desc(x) = siw.Cells(siw.Range(&quot;Scenario_Type3&quot;).Offset(Scenario_Num, 0).Row, incident.Column).Value
+1320                              SRPS1Gen(x) = siw.Cells(siw.Range(&quot;Scenario_Type4&quot;).Offset(Scenario_Num, 0).Row, incident.Column).Value
+                                  relief_effluent_case(x) = incident.Offset(2, 0).Value
+1330                          End If
+1340                      End If
+1350                      x = x + 1
+1360                  Next incident
+1370                  Z = 1
+1380                  old_statusbar = Application.StatusBar
+1390                  For Each results_incident In saw.Range(&quot;Results_Incident&quot;)
+1400                      Application.StatusBar = old_statusbar &amp; &quot; - &quot; &amp; results_incident
+1410                      Key_Chemical = saw.Cells(results_incident.Row, saw.Range(&quot;Results_Chemical&quot;).Column).Value
+1420                      If IncidentArray(Z) = True Then
+1430                          y = 1
+1440                          old_statusbar2 = Application.StatusBar
+1450                          For Each tf In saw.Range(&quot;Results_TF&quot;)
+1460                              Application.StatusBar = old_statusbar2 &amp; &quot; - &quot; &amp; tf
+1470                              If Not IsError(saw.Cells(results_incident.Row, tf.Column)) And IsNumeric(saw.Cells(results_incident.Row, tf.Column)) Then
+1480                                  If Not saw.Cells(results_incident.Row, tf.Column) = &quot;&quot; Then
+1550                                          Prob_of_Ignition = vbNullString
+1560                                          Prob_of_Ignition_Desc = vbNullString
+1570                                          Prob_of_Ignition_Detail = vbNullString
+1580                                          Toxic_Enabling_Factor = vbNullString
+1590                                          Enabling_Factor_Desc = vbNullString
+1600                                          Enabling_Factor_Detail = vbNullString
+1610                                          Time_at_Risk_Factor = vbNullString
+1620                                          NoCR = Application.WorksheetFunction.CountA(saw.Range(&quot;Results_Release_Calcs&quot;))
+1630                                          ReDim calc_result(NoCR)
+1640                                          W = 1
+1650                                          For Each calc In saw.Range(&quot;Results_Release_Calcs&quot;)
+1660                                              If Not IsError(saw.Cells(results_incident.Row, calc.Column)) Then
+1670                                                  calc_result(W) = saw.Cells(results_incident.Row, calc.Column).Value
+1680                                                  Else
+1690                                                  calc_result(W) = vbNullString
+1700                                              End If
+1710                                              W = W + 1
+1720                                          Next calc
+1730                                          target_factor = saw.Cells(results_incident.Row, tf.Column)
+1740                                          Target_Factor_Desc = saw.Cells(results_incident.Row, saw.Range(&quot;Outcome&quot;).Offset(0, y - 1).Column)
+1750                                          outcome_desc = saw.Cells(results_incident.Row, saw.Range(&quot;Outcome_Desc&quot;).Offset(0, y - 1).Column)
+1760                                          Est_POE = saw.Cells(results_incident.Row, saw.Range(&quot;Results_Est_POE&quot;).Offset(0, y - 1).Column)
+1770                                          If IsEmpty(Est_POE) Then
+1780                                              Est_POE = vbNullString
+1790                                              Else
+
+1800                                                 If Est_POE &gt; 0.1 Then
+1810                                                     Est_POE = &quot;&gt;0.1&quot;
+1820                                                     Else
+1830                                                     If Est_POE &lt; 0.01 Then
+1840                                                         Est_POE = &quot;&lt;0.01&quot;
+1850                                                         Else
+1860                                                         Est_POE = Format(Round(Est_POE, 2))
+1870                                                     End If
+1880                                                 End If
+
+1890                                          End If
+1900                                          If IsNumeric(saw.Cells(results_incident.Row, saw.Range(&quot;Results_TEF&quot;).Offset(0, y - 1).Column)) Then
+1910                                              If Not saw.Cells(results_incident.Row, saw.Range(&quot;Results_TEF&quot;).Offset(0, y - 1).Column) = &quot;&quot; Then
+1920                                                  Toxic_Enabling_Factor = saw.Cells(results_incident.Row, saw.Range(&quot;Results_TEF&quot;).Offset(0, y - 1).Column)
+1930                                                  Enabling_Factor_Desc = saw.Cells(results_incident.Row, saw.Range(&quot;Results_EF_Desc&quot;).Offset(0, y - 1).Column)
+1940                                                  Enabling_Factor_Detail = saw.Cells(results_incident.Row, saw.Range(&quot;Results_EF_Detail&quot;).Offset(0, y - 1).Column)
+1950                                              End If
+1960                                          End If
+1970                                          If IsNumeric(saw.Cells(results_incident.Row, saw.Range(&quot;Results_POI&quot;).Offset(0, y - 1).Column)) Then
+1980                                              If Not saw.Cells(results_incident.Row, saw.Range(&quot;Results_POI&quot;).Offset(0, y - 1).Column) = &quot;&quot; Then
+1990                                                  If scenario_type = &quot;Fuel Accumulation during Light Off&quot; Or _
+                                                          (scenario_type = &quot;Fuel Accumulation during Operation&quot; And results_incident = &quot;Equipment Rupture - Deflagration&quot;) Or _
+                                                          (Not scenario_type = &quot;Ignitable Headspace&quot; And (results_incident = &quot;Small Hole Size Leak (0.5 inch)&quot; Or results_incident = &quot;Seal or Gasket Failure equivalent to Small Hole Size Leak (0.5 inch)&quot;) And (tf.Value = &quot;Off-Site Toxic Release&quot; Or tf.Value = &quot;On-Site Toxic Release&quot; Or tf.Value = &quot;Indoor Toxic Release&quot; Or tf.Value = &quot;Chemical Exposure&quot;)) Then
+2000                                                      Prob_of_Ignition = vbNullString
+2010                                                      Prob_of_Ignition_Desc = vbNullString
+2020                                                      Prob_of_Ignition_Detail = vbNullString
+2030                                                  Else
+2040                                                      Prob_of_Ignition = saw.Cells(results_incident.Row, saw.Range(&quot;Results_POI&quot;).Offset(0, y - 1).Column)
+2050                                                      Prob_of_Ignition_Desc = saw.Cells(results_incident.Row, saw.Range(&quot;Results_PI_Desc&quot;).Offset(0, y - 1).Column)
+2060                                                      Prob_of_Ignition_Detail = saw.Cells(results_incident.Row, saw.Range(&quot;Results_PI_Detail&quot;).Offset(0, y - 1).Column)
+2070                                                  End If
+2071                                                  If scenario_type = &quot;Propagation of Flame or Burning Ember&quot; Then
+2072                                                      Prob_of_Ignition = 0
+2073                                                      Prob_of_Ignition_Desc = &quot;&quot;
+2074                                                      Prob_of_Ignition_Detail = &quot;Probability of Ignition in upstream equipment accounted for in Initiating Event Factor&quot;
+2075                                                  End If
+2080                                              End If
+2090                                          End If
+2100                                          Select Case UCase(pcw.Range(&quot;Operating_Time&quot;).Text)
+                                                  Case &quot;GREATER THAN 10%&quot;
+2110                                                  Time_at_Risk_Factor = 0
+2120                                                  Time_at_Risk = &quot;In Operation &gt; 10%&quot;
+2130                                              Case &quot;LESS THAN 10%&quot;
+2140                                                  Time_at_Risk_Factor = 1
+2150                                                  Time_at_Risk = &quot;In Operation &lt; 10%&quot;
+2160                                              Case &quot;LESS THAN 1% &amp; 1/QTR&quot;
+2170                                                  Time_at_Risk_Factor = 2
+2180                                                  Time_at_Risk = &quot;In Operation &lt; 1% and Occurs &lt; 1/Qtr&quot;
+2190                                          End Select
+2200                                          For Q = 1 To noie
+2210                                              POI_Value = 0
+2220                                              TEF_Value = 0
+2230                                              If Prob_of_Ignition &lt;&gt; &quot;&quot; Then
+2240                                                  POI_Value = Prob_of_Ignition
+2250                                              End If
+2260                                              If Toxic_Enabling_Factor &lt;&gt; &quot;&quot; Then
+2270                                                  TEF_Value = Toxic_Enabling_Factor
+2280                                              End If
+2290                                              If InStr(1, srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column), &quot;Human Failure&quot;, vbTextCompare) &gt; 0 Or Time_at_Risk = &quot;&quot; Then &apos; Replaced CausesArray(Q) with actual value in Scenario Results in case user changed initiating event
+2300                                                  Time_at_Risk_Value = 0
+2310                                              Else
+2320                                                  Time_at_Risk_Value = Time_at_Risk_Factor
+2330                                              End If
+2340                                              IPL_Required = target_factor - IEF(Q) - POI_Value - TEF_Value - Time_at_Risk_Value
+2350                                                  newscenario = True
+2360                                                  On Error Resume Next
+2370                                                  Tool_Fire_IE = False
+2380                                                  For Each ToolFireIE In ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;IE_Fire_Tool&quot;)
+2390                                                      If CausesArray(Q) = ToolFireIE Then
+2400                                                          Tool_Fire_IE = True
+2410                                                      End If
+2420                                                  Next ToolFireIE
+2430                                                  On Error GoTo Error_Handling
+2440                                                  If r_eq &gt; 0 Then
+2450                                                      Start = 1
+2460                                                      existing = r_eq
+2470                                                      For T = Start To existing
+2480                                                          R = r_eq_start - 1 + T
+2490                                                          If UCase(Range(&quot;Report_NoIPL&quot;).Value) = &quot;YES&quot; Or IPL_Required &gt; 0 Or srw.Cells(R, srw.Range(&quot;Out_ATF&quot;).Column).Value &lt;&gt; &quot;&quot; Or srw.Cells(R, srw.Range(&quot;Out_API&quot;).Column).Value &lt;&gt; &quot;&quot; Or srw.Cells(R, srw.Range(&quot;Out_ATEF&quot;).Column).Value &lt;&gt; &quot;&quot; Then
+2500                                                              Exist_Fire_User_IE = False
+2510                                                              For Each ExistFireUserIE In ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;IE_Fire_USER&quot;)
+2520                                                                  If srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).Value = ExistFireUserIE Then
+2530                                                                      Exist_Fire_User_IE = True
+2540                                                                  End If
+2550                                                              Next ExistFireUserIE
+2560                                                              Exist_Fire_IE = False
+2570                                                              For Each ExistFireIE In ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;IE_Fire_Tool&quot;)
+2580                                                                  If srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).Value = ExistFireIE Then
+2590                                                                      Exist_Fire_IE = True
+2600                                                                  End If
+2610                                                              Next ExistFireIE
+2620                                                              Scenario_Result_Exists = 0
+2630                                                              If srw.Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column) = mmw.Range(&quot;Equipment_Tag&quot;).Value Then Scenario_Result_Exists = Scenario_Result_Exists + 1
+2640                                                              If srw.Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column).Value = tf.Value Then Scenario_Result_Exists = Scenario_Result_Exists + 1
+2660                                                              If srw.Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column) = scenario_type.Value Then Scenario_Result_Exists = Scenario_Result_Exists + 1
+2670                                                              If srw.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column) = results_incident.Value Then Scenario_Result_Exists = Scenario_Result_Exists + 1
+2680                                                              If srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column) = CausesArray(Q) Then
+2690                                                                  Scenario_Result_Exists = Scenario_Result_Exists + 1
+2700                                                                  ElseIf srw.Cells(R, srw.Range(&quot;Out_Cause_Tool&quot;).Column) = CausesArray(Q) Then
+2710                                                                      Scenario_Result_Exists = Scenario_Result_Exists + 1
+2720                                                                  ElseIf Tool_Fire_IE = True And Exist_Fire_User_IE = True Then
+2730                                                                      Scenario_Result_Exists = Scenario_Result_Exists + 1
+2740                                                                  ElseIf Tool_Fire_IE = True And Exist_Fire_IE = True Then
+2750                                                                      Scenario_Result_Exists = Scenario_Result_Exists + 1
+2760                                                              End If
+2770                                                              If Scenario_Result_Exists = 5 Then
+2780                                                                  If srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column) = &quot;Eliminated&quot; Then
+2790                                                                      overwrite = True
+2800                                                                      changed = 0
+2810                                                                      With srw
+2820                                                                          .Cells(R, srw.Range(&quot;Out_Suggested_IPLs&quot;).Column) = Suggested_IPLs
+2830                                                                          If Not .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Text = Key_Chemical Then
+2840                                                                              .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Text
+2850                                                                              .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column) = Key_Chemical
+2860                                                                              .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column).Interior.ColorIndex = 35
+2870                                                                              changed = changed + 1
+2880                                                                          End If
+2890                                                                          If Not .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Text = scenario_type.Value Then
+2900                                                                              .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Text
+2910                                                                              .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column) = scenario_type.Value
+2920                                                                              .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Interior.ColorIndex = 35
+2930                                                                              changed = changed + 1
+2940                                                                          End If
+2950                                                                          If Not .Cells(R, srw.Range(&quot;Out_Plant_Section&quot;).Column).Text = mmw.Range(&quot;Plant_Section&quot;).Value Then
+2960                                                                              .Cells(R, srw.Range(&quot;Out_Plant_Section&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Plant_Section&quot;).Column).Text
+2970                                                                              .Cells(R, srw.Range(&quot;Out_Plant_Section&quot;).Column) = mmw.Range(&quot;Plant_Section&quot;).Value
+2980                                                                              .Cells(R, srw.Range(&quot;Out_Plant_Section&quot;).Column).Interior.ColorIndex = 35
+2990                                                                              changed = changed + 1
+3000                                                                          End If
+3010                                                                          If Not .Cells(R, srw.Range(&quot;Out_Source&quot;).Column).Text = &quot;Tool&quot; Then
+3020                                                                              .Cells(R, srw.Range(&quot;Out_Source&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Source&quot;).Column).Text
+3030                                                                              .Cells(R, srw.Range(&quot;Out_Source&quot;).Column) = &quot;Tool&quot;
+3040                                                                              .Cells(R, srw.Range(&quot;Out_Source&quot;).Column).Interior.ColorIndex = 35
+3050                                                                              changed = changed + 1
+3060                                                                          End If
+3070                                                                          W = 1
+3080                                                                          For Each calc In .Range(&quot;Out_Release_Calcs&quot;)
+3090                                                                              If Not .Cells(R, calc.Column) = calc_result(W) Then
+3100                                                                                 .Cells(R, calc.Column).AddComment.Text &quot;Old Value: &quot; &amp; Application.WorksheetFunction.Text(.Cells(R, calc.Column).Value, &quot;0.0000&quot;)
+3110                                                                                 .Cells(R, calc.Column) = calc_result(W)
+3120                                                                                 .Cells(R, calc.Column).Interior.ColorIndex = 35
+3130                                                                                 changed = changed + 1
+3140                                                                              End If
+3150                                                                              W = W + 1
+3160                                                                          Next calc
+3170                                                                          If Not .Cells(R, srw.Range(&quot;Out_Est_POE&quot;).Column).Text = Est_POE Then
+3180                                                                              .Cells(R, srw.Range(&quot;Out_Est_POE&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Est_POE&quot;).Column).Text
+3190                                                                              .Cells(R, srw.Range(&quot;Out_Est_POE&quot;).Column) = Est_POE
+3200                                                                              .Cells(R, srw.Range(&quot;Out_Est_POE&quot;).Column).Interior.ColorIndex = 35
+3210                                                                              changed = changed + 1
+3220                                                                          End If
+3230                                                                          If Not .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Text = outcome_desc Then
+3240                                                                              .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Text
+3250                                                                              .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column) = outcome_desc
+3260                                                                              .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column).Interior.ColorIndex = 35
+3270                                                                              changed = changed + 1
+3280                                                                          End If
+3290                                                                          If Not .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column).Text = Target_Factor_Desc Then
+3300                                                                              .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column).Text
+3310                                                                              .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column) = Target_Factor_Desc
+3320                                                                              .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column).Interior.ColorIndex = 35
+3330                                                                              changed = changed + 1
+3340                                                                          End If
+3350                                                                          If Not .Cells(R, srw.Range(&quot;Out_TF&quot;).Column) = target_factor Then
+3360                                                                              .Cells(R, srw.Range(&quot;Out_TF&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Text
+3370                                                                              .Cells(R, srw.Range(&quot;Out_TF&quot;).Column) = target_factor
+3380                                                                              .Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Interior.ColorIndex = 35
+3390                                                                              changed = changed + 1
+3400                                                                          End If
+3410                                                                          If Tool_Fire_IE = True And Not srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column) = CausesArray(Q) And Exist_Fire_User_IE = False Then
+3420                                                                              .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).Text
+3430                                                                              .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column) = CausesArray(Q)
+3440                                                                              .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column).Interior.ColorIndex = 35
+3450                                                                              changed = changed + 1
+3460                                                                              If Not .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column) = IEF(Q) Then
+3470                                                                                  .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Text
+3480                                                                                  .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column) = IEF(Q)
+3490                                                                                  .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Interior.ColorIndex = 35
+3500                                                                                  changed = changed + 1
+3510                                                                              End If
+3520                                                                          End If
+3530                                                                          If srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column) = CausesArray(Q) Then
+3540                                                                              If Not .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column) = IEF(Q) Then
+3550                                                                                  .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Text
+3560                                                                                  .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column) = IEF(Q)
+3570                                                                                  .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Interior.ColorIndex = 35
+3580                                                                                  changed = changed + 1
+3590                                                                              End If
+3600                                                                          End If
+                                                                              If Not .Cells(R, srw.Range(&quot;Out_Cause_Desc_Tool&quot;).Column) = CauseDesc(Q) Then
+                                                                                  .Cells(R, srw.Range(&quot;Out_Cause_Desc_Tool&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Cause_Desc_Tool&quot;).Column).Text
+                                                                                  .Cells(R, srw.Range(&quot;Out_Cause_Desc_Tool&quot;).Column) = CauseDesc(Q)
+                                                                                  .Cells(R, srw.Range(&quot;Out_Cause_Desc_Tool&quot;).Column).Interior.ColorIndex = 35
+                                                                                  changed = changed + 1
+                                                                              End If
+3610                                                                          If Not .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column) = Toxic_Enabling_Factor Then
+3620                                                                              .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Text
+3630                                                                              .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column) = Toxic_Enabling_Factor
+3640                                                                              .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Interior.ColorIndex = 35
+3650                                                                              changed = changed + 1
+3660                                                                          End If
+3670                                                                          If Not .Cells(R, srw.Range(&quot;Out_PI&quot;).Column) = Prob_of_Ignition Then
+3680                                                                              .Cells(R, srw.Range(&quot;Out_PI&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Text
+3690                                                                              .Cells(R, srw.Range(&quot;Out_PI&quot;).Column) = Prob_of_Ignition
+3700                                                                              .Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Interior.ColorIndex = 35
+3710                                                                              changed = changed + 1
+3720                                                                          End If
+3730                                                                          If Not .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column) = Prob_of_Ignition_Desc Then
+3740                                                                              .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column).Text
+3750                                                                              .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column) = Prob_of_Ignition_Desc
+3760                                                                              .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column).Interior.ColorIndex = 35
+3770                                                                              changed = changed + 1
+3780                                                                          End If
+3790                                                                          If Not .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column) = Prob_of_Ignition_Detail Then
+3800                                                                             .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column).Text
+3810                                                                             .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column) = Prob_of_Ignition_Detail
+3820                                                                             .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column).Interior.ColorIndex = 35
+3830                                                                             changed = changed + 1
+3840                                                                          End If
+3850                                                                          If Not .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column) = Enabling_Factor_Desc Then
+3860                                                                             .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column).Text
+3870                                                                             .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column) = Enabling_Factor_Desc
+3880                                                                             .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column).Interior.ColorIndex = 35
+3890                                                                             changed = changed + 1
+3900                                                                          End If
+3910                                                                          If Not .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column) = Enabling_Factor_Detail Then
+3920                                                                             .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column).Text
+3930                                                                             .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column) = Enabling_Factor_Detail
+3940                                                                             .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column).Interior.ColorIndex = 35
+3950                                                                             changed = changed + 1
+3960                                                                          End If
+3970                                                                          If Not InStr(1, .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).Text, &quot;USER DEFINED&quot;) &gt; 0 Then
+3980                                                                              If InStr(1, srw.Cells(R, srw.Range(&quot;Out_Cause&quot;).Column), &quot;Human Failure&quot;, vbTextCompare) &gt; 0 Then
+3990                                                                                  Time_at_Risk2 = &quot;None&quot;
+4000                                                                                  Time_at_Risk_Factor2 = 0
+4010                                                                              Else
+4011                                                                                  Time_at_Risk_Factor2 = Time_at_Risk_Value
+4020                                                                                  Time_at_Risk2 = Time_at_Risk
+4030                                                                              End If
+4040                                                                              If Not .Cells(R, srw.Range(&quot;Out_POE&quot;).Column) = Time_at_Risk_Factor2 Then
+4050                                                                                  .Cells(R, srw.Range(&quot;Out_POE&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Text
+4060                                                                                  .Cells(R, srw.Range(&quot;Out_POE&quot;).Column) = Time_at_Risk_Factor2
+4070                                                                                  .Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Interior.ColorIndex = 35
+4080                                                                                  changed = changed + 1
+4090                                                                              End If
+4100                                                                              If Not .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).Text = Time_at_Risk2 And InStr(1, .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).Text, &quot;User&quot;, vbTextCompare) = 0 Then
+4110                                                                                  .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).Text
+4120                                                                                  .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column) = Time_at_Risk2
+4130                                                                                  .Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column).Interior.ColorIndex = 35
+4140                                                                                  changed = changed + 1
+4150                                                                              End If
+4160                                                                          End If
+4290                                                                          srw.Cells(R, srw.Range(&quot;Out_TF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,0,&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+4300                                                                          srw.Cells(R, srw.Range(&quot;Out_PI_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,&quot;&quot;&quot;&quot;,&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+4310                                                                          srw.Cells(R, srw.Range(&quot;Out_TEF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,&quot;&quot;&quot;&quot;,&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+4320                                                                          srw.Cells(R, srw.Range(&quot;Out_LPR&quot;).Column).Formula = &quot;=&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_TF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                                  &quot;-SUM(&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                                  &quot;,&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_PI_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                                  &quot;,&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_TEF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                                  &quot;,&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+4330                                                                          ipl_formula = &quot;&quot;
+4340                                                                          For IPL = 1 To 8
+4350                                                                              ipl_formula = ipl_formula &amp; &quot;-&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; IPL).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+4360                                                                          Next IPL
+4370                                                                          srw.Cells(R, srw.Range(&quot;Out_Gap&quot;).Column).Formula = &quot;=&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_LPR&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; ipl_formula
+4380                                                                          srw.Cells(R, srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column).Formula = &quot;=&quot; &amp; _
+                                                                                  srw.Cells(R, srw.Range(&quot;Out_IPL_1&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                                  &quot;+&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_2&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                                  &quot;+&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_3&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                                  &quot;+&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_4&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+4390                                                                          new_ipl_formula = &quot;&quot;
+4400                                                                          new_ipl_formula = &quot;COUNTIF(&quot;
+4410                                                                          new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+4420                                                                          new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+4430                                                                          new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+4440                                                                          new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;Proposed&quot;&quot;)+COUNTIF(&quot;
+4450                                                                          new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+4460                                                                          new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+4470                                                                          new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+4480                                                                          new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;In Progress&quot;&quot;)&quot;
+4490                                                                          srw.Cells(R, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+4500                                                                          srw.Cells(R, srw.Range(&quot;Out_New_IPL&quot;).Column).Formula = &quot;=&quot; &amp; new_ipl_formula
+4510                                                                          srw.Cells(R, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+4520                                                                          If Not srw.Cells(R, srw.Range(&quot;Out_Last_Version&quot;).Column).Text = srw.Range(&quot;Version&quot;).Text Then
+4530                                                                             .Cells(R, srw.Range(&quot;Out_Last_Version&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; .Cells(R, srw.Range(&quot;Out_Last_Version&quot;).Column).Text
+4540                                                                             .Cells(R, srw.Range(&quot;Out_Last_Version&quot;).Column).Value = srw.Range(&quot;Version&quot;).Text
+4550                                                                             .Cells(R, srw.Range(&quot;Out_Last_Version&quot;).Column).Interior.ColorIndex = 35
+4560                                                                          End If
+4570                                                                          srw.Cells(R, srw.Range(&quot;Out_Last_Calc_Date&quot;).Column).Value = Now
+4580                                                                          If changed = 0 Then
+4590                                                                             .Cells(R, srw.Range(&quot;Out_Compare&quot;).Column) = &quot;Same&quot;
+4600                                                                          Else
+4610                                                                             .Cells(R, srw.Range(&quot;Out_Compare&quot;).Column) = &quot;Revised&quot;
+4620                                                                          End If
+4630                                                                      End With
+4640                                                                  End If
+4650                                                                  newscenario = False
+4660                                                              End If
+4670                                                          End If
+4680                                                      Next T
+4690                                                  End If
+4700                                                  If newscenario = True Then
+4710                                                      If UCase(Range(&quot;Report_NoIPL&quot;).Value) = &quot;YES&quot; Or IPL_Required &gt; 0 Then
+4720                                                          With srw
+4730                                                              If srw.Range(&quot;Out_Scenario_No&quot;).Offset(1, 0).Value = &quot;&quot; Then
+4740                                                                  R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+4750                                                              Else
+4760                                                                  R = srw.Range(&quot;Out_Scenario_No&quot;).End(xlDown).Row + 1
+4770                                                              End If
+4780                                                              .Cells(R, srw.Range(&quot;Out_Scenario_No&quot;).Column) = Scenario_ID + 0.01
+4790                                                              Scenario_ID = Scenario_ID + 0.01
+4800                                                              .Cells(R, srw.Range(&quot;Out_Suggested_IPLs&quot;).Column) = Suggested_IPLs
+4810                                                              .Cells(R, srw.Range(&quot;Out_Plant_Section&quot;).Column) = mmw.Range(&quot;Plant_Section&quot;).Value
+4820                                                              .Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column) = mmw.Range(&quot;Equipment_Tag&quot;).Value
+4830                                                              .Cells(R, srw.Range(&quot;Out_Equip_Type&quot;).Column) = Equipment
+4840                                                              .Cells(R, srw.Range(&quot;Out_Scenario_Type&quot;).Column) = scenario_type.Value
+4850                                                              .Cells(R, srw.Range(&quot;Out_Cause&quot;).Column) = CausesArray(Q)
+4860                                                              .Cells(R, srw.Range(&quot;Out_Cause_Desc&quot;).Column) = CauseDesc(Q)
+4870                                                              .Cells(R, srw.Range(&quot;Out_Cause_Desc_Tool&quot;).Column) = CauseDesc(Q)
+                                                                  .Cells(R, srw.Range(&quot;Out_POI_Desc&quot;).Column) = Prob_of_Ignition_Desc
+4880                                                              .Cells(R, srw.Range(&quot;Out_POI_Detail&quot;).Column) = Prob_of_Ignition_Detail
+4890                                                              .Cells(R, srw.Range(&quot;Out_EF_Desc&quot;).Column) = Enabling_Factor_Desc
+4900                                                              .Cells(R, srw.Range(&quot;Out_EF_Detail&quot;).Column) = Enabling_Factor_Detail
+4910                                                              .Cells(R, srw.Range(&quot;Out_IPL1_Detail&quot;).Column) = BPCSDesc(Q)
+4920                                                              .Cells(R, srw.Range(&quot;Out_IPL2_Detail&quot;).Column) = AlarmDesc(Q)
+4930                                                              .Cells(R, srw.Range(&quot;Out_IPL3_Detail&quot;).Column) = SIS1Desc(Q)
+4940                                                              .Cells(R, srw.Range(&quot;Out_IPL5_Detail&quot;).Column) = ReliefDesc(Z)
+4950                                                              .Cells(R, srw.Range(&quot;Out_IPL6_Detail&quot;).Column) = SRPS1Desc(Z)
+4960                                                              .Cells(R, srw.Range(&quot;Out_IPL6_Desc&quot;).Column) = SRPS1Gen(Z)
+
+5020                                                              .Cells(R, srw.Range(&quot;Out_Incident&quot;).Column) = results_incident.Value
+5030                                                              .Cells(R, srw.Range(&quot;Out_Key_Chemical&quot;).Column) = Key_Chemical
+5040                                                              .Cells(R, srw.Range(&quot;Out_Outcome&quot;).Column) = tf.Value
+5050                                                              .Cells(R, srw.Range(&quot;Out_Compare&quot;).Column) = &quot;New&quot;
+5060                                                              .Cells(R, srw.Range(&quot;Out_Source&quot;).Column) = &quot;Tool&quot;
+5070                                                              W = 1
+5080                                                              For Each calc In .Range(&quot;Out_Release_Calcs&quot;)
+5090                                                                  .Cells(R, calc.Column) = calc_result(W)
+5100                                                                  W = W + 1
+5110                                                              Next calc
+5120                                                              .Cells(R, srw.Range(&quot;Out_Est_POE&quot;).Column) = Est_POE
+5130                                                              .Cells(R, srw.Range(&quot;Out_Outcome_Desc&quot;).Column) = outcome_desc
+5140                                                              .Cells(R, srw.Range(&quot;Out_Consequence&quot;).Column) = Target_Factor_Desc
+5150                                                              .Cells(R, srw.Range(&quot;Out_TF&quot;).Column) = target_factor
+5160                                                              .Cells(R, srw.Range(&quot;Out_IEF&quot;).Column) = IEF(Q)
+5170                                                              .Cells(R, srw.Range(&quot;Out_TEF&quot;).Column) = Toxic_Enabling_Factor
+5180                                                              .Cells(R, srw.Range(&quot;Out_PI&quot;).Column) = Prob_of_Ignition
+5190                                                              If InStr(1, CausesArray(Q), &quot;Human Failure&quot;, vbTextCompare) &gt; 0 Then
+5200                                                                  Time_at_Risk2 = &quot;None&quot;
+5210                                                                  Time_at_Risk_Factor2 = 0
+5220                                                              Else
+5230                                                                  Time_at_Risk2 = Time_at_Risk
+5240                                                              End If
+5250                                                              srw.Cells(R, srw.Range(&quot;Out_POE_Desc&quot;).Column) = Time_at_Risk2
+5260                                                              srw.Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Value = Time_at_Risk_Factor2
+5290                                                              srw.Cells(R, srw.Range(&quot;Out_TF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,0,&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+5300                                                              srw.Cells(R, srw.Range(&quot;Out_PI_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,&quot;&quot;&quot;&quot;,&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+5310                                                              srw.Cells(R, srw.Range(&quot;Out_TEF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,&quot;&quot;&quot;&quot;,&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+5320                                                              srw.Cells(R, srw.Range(&quot;Out_LPR&quot;).Column).Formula = &quot;=&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_TF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                      &quot;-SUM(&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                      &quot;,&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_PI_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                      &quot;,&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_TEF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                      &quot;,&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_POE&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+5330                                                              ipl_formula = vbNullString
+5340                                                              For IPL = 1 To 8
+5350                                                                  ipl_formula = ipl_formula &amp; &quot;-&quot; &amp; .Cells(R, srw.Range(&quot;Out_IPL_&quot; &amp; IPL).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+5360                                                              Next IPL
+5370                                                              srw.Cells(R, srw.Range(&quot;Out_Gap&quot;).Column).Formula = &quot;=&quot; &amp; .Cells(R, srw.Range(&quot;Out_LPR&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; ipl_formula
+5380                                                              srw.Cells(R, srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column).Formula = &quot;=&quot; &amp; _
+                                                                      srw.Cells(R, srw.Range(&quot;Out_IPL_1&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                      &quot;+&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_2&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                      &quot;+&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_3&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                                                      &quot;+&quot; &amp; srw.Cells(R, srw.Range(&quot;Out_IPL_4&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+5390                                                              new_ipl_formula = &quot;&quot;
+5400                                                              new_ipl_formula = &quot;COUNTIF(&quot;
+5410                                                              new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+5420                                                              new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+5430                                                              new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+5440                                                              new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;Proposed&quot;&quot;)+COUNTIF(&quot;
+5450                                                              new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+5460                                                              new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+5470                                                              new_ipl_formula = new_ipl_formula &amp; srw.Cells(R, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+5480                                                              new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;In Progress&quot;&quot;)&quot;
+5490                                                              srw.Cells(R, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+5500                                                              srw.Cells(R, srw.Range(&quot;Out_New_IPL&quot;).Column).Formula = &quot;=&quot; &amp; new_ipl_formula
+5510                                                              srw.Cells(R, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+5520                                                              srw.Cells(R, srw.Range(&quot;Out_Last_Version&quot;).Column) = srw.Range(&quot;Version&quot;).Value
+5530                                                              srw.Cells(R, srw.Range(&quot;Out_Last_Calc_Date&quot;).Column) = Now
+5540                                                          End With
+5550                                                      End If
+5560                                                  End If
+5570                                                  Time_at_Risk2 = Time_at_Risk
+5580                                                  Time_at_Risk_Factor2 = Time_at_Risk_Factor
+5590                                          Next Q
+5610                                  End If
+5620                              End If
+5630                              y = y + 1
+5640                              Scenario_ID = Int(Application.WorksheetFunction.Max(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column))) + 1
+5650                          Next tf
+5660                      End If
+5670                      Z = Z + 1
+5680                  Next results_incident
+5690              End If
+5700          End If
+5710      End If
+5720      Scenario_Num = Scenario_Num + 1
+5730  Next scenario_type
+5740  Application.StatusBar = &quot;Updating User Scenarios&quot;
+5741  user_scenario_update_failed = False
+5750  If r_eq &gt; 0 Then
+5760      Update_User_Scenarios
+5770  End If
+
+5780  Application.StatusBar = &quot;Please Wait&quot;
+
+5790  If macrorunning = False Or calculate_only_running = True Then
+          Sort_Scenario_Results
+5800      Application.StatusBar = &quot;Formatting Scenario Results&quot;
+5810      srw.Activate
+          
+5820      R = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) + srw.Range(&quot;Out_Scenario_No&quot;).Row - 2
+5830      c = srw.UsedRange.Columns.Count
+5840      If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+5850          With srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, 1), srw.Cells(R, c))
+5860              .Borders(xlEdgeLeft).LineStyle = xlContinuous
+5870              .Borders(xlEdgeTop).LineStyle = xlContinuous
+5880              .Borders(xlEdgeBottom).LineStyle = xlContinuous
+5890              .Borders(xlEdgeRight).LineStyle = xlContinuous
+5900              .Borders(xlInsideVertical).LineStyle = xlContinuous
+5910              If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+5920                  .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+5930              End If
+5940          End With
+5950          For Each calc In srw.Range(&quot;Out_Release_Calcs&quot;)
+5960              If UCase(Right(calc.Offset(0, 1).Name.Name, 5)) = &quot;UNITS&quot; Then
+5970                  srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).Borders(xlEdgeRight).LineStyle = xlNone
+5980                  srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).HorizontalAlignment = xlRight
+5990                  srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column + 1), srw.Cells(R, calc.Column + 1)).HorizontalAlignment = xlLeft
+6000              End If
+6010          Next calc
+6020      End If
+          
+6030      With srw.Range(srw.Range(&quot;Out_Credible&quot;).Offset(1, 0), srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column)).Validation
+6040          .Delete
+6050          .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
+              xlBetween, Formula1:=&quot;Yes,No&quot;
+6060          .IgnoreBlank = True
+6070          .InCellDropdown = True
+6080          .InputTitle = &quot;&quot;
+6090          .ErrorTitle = &quot;&quot;
+6100          .InputMessage = &quot;&quot;
+6110          .ErrorMessage = &quot;&quot;
+6120          .ShowInput = True
+6130          .ShowError = True
+6140      End With
+
+6150      Application.StatusBar = &quot;Evaluating Scenario Results&quot;
+6160      Evaluate_Scenario_Results
+
+6170      ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Activate
+6180      ThisWorkbook.Worksheets(&quot;Scenario Results&quot;).Range(&quot;Out_Credible&quot;).Offset(1, 0).Activate
+6190      Application.StatusBar = False
+6200      Application.Calculation = xlCalculationAutomatic
+6210      On Error Resume Next
+6220      currentFiltRange = srw.AutoFilter.Range.Address
+6230      srw.Range(currentFiltRange).AutoFilter
+6240      srw.Range(currentFiltRange).AutoFilter
+6250      If Range(&quot;Filter_Equipment&quot;).Value = &quot;Yes&quot; Then
+6260          If Not mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+6270              srw.Range(currentFiltRange).AutoFilter _
+                      field:=srw.Range(&quot;Out_Equip_Tag&quot;).Column, _
+                      Criteria1:=mmw.Range(&quot;Equipment_Tag&quot;).Value
+6280          End If
+6290      End If
+6300      If Range(&quot;Filter_IPLs&quot;).Value = &quot;Yes&quot; Then
+6310          If Not mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+6320              srw.Range(currentFiltRange).AutoFilter _
+                      field:=srw.Range(&quot;Out_LPR&quot;).Column, Criteria1:=&quot;&gt;0&quot;, _
+                      Operator:=xlAnd
+6330          End If
+6340      End If
+6350      If Range(&quot;Filter_Worst&quot;).Value = &quot;Yes&quot; Then
+6360          If Not mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+6370              srw.Range(currentFiltRange).AutoFilter field:=srw.Range(&quot;Out_Case_Evaluation&quot;).Column, Criteria1:=&quot;&lt;&gt;&quot;
+6380          End If
+6390      End If
+6400      Application.ScreenUpdating = True
+6410      If user_scenario_update_failed = True Then
+6420          MsgBox &quot;Problem with user scenario inputs.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;User scenario(s) with errors not updated.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Check cells marked red in Scenario Results and use Modify User Scenario button to check inputs versus calculations.&quot;
+6430      End If
+6440  End If
+
+6450  If calculate_only_running = True Then
+6460      re = 0
+6470      calculate_only_running = False
+6480      macrorunning = False
+6490  End If
+
+6500  Exit Sub
+
+Error_Handling:
+6510  Application.Calculation = xlCalculationAutomatic
+6520  Application.ScreenUpdating = True
+6530  macrorunning = False
+6540  calculate_only_running = False
+6550  MsgBox &quot;Error calculating scenarios, execution terminated with incomplete results.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Write down the following and contact tool SME for troubleshooting.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Equipment Tag: &quot; &amp; mmw.Range(&quot;Equipment_Tag&quot;) &amp; Chr(13) &amp; &quot;Macro: Calculate_Scenarios&quot; &amp; Chr(13) &amp; &quot;Error Number: &quot; &amp; Err.Number &amp; Chr(13) &amp; &quot;Error Description: &quot; &amp; Err.Description &amp; Chr(13) &amp; &quot;Error Source: &quot; &amp; Err.Source &amp; Chr(13) &amp; &quot;Error Line: &quot; &amp; Erl
+6560  End
+End Sub
+Sub Evaluate_Scenario_Results()
+10        If macrorunning = False Then
+20            Application.ScreenUpdating = False
+25            Application.Calculation = xlCalculationManual
+30        End If
+40        Application.StatusBar = &quot;Evaluating Scenario Results for High TF or IPL&quot;
+60        Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+70        srw.Activate
+80        c = srw.Range(&quot;Out_Scenario_No&quot;).Column
+90        Total = Application.WorksheetFunction.CountA(srw.Columns(c))
+100       Total = Total - Application.WorksheetFunction.CountA(srw.Range(srw.Range(&quot;Out_Scenario_No&quot;), srw.Cells(1, c)))
+110       case_column = srw.Range(&quot;Out_Case_Evaluation&quot;).Column
+120       case_row = srw.Range(&quot;Out_Case_Evaluation&quot;).Row + 1
+130       case_last = srw.Range(&quot;Out_Scenario_No&quot;).Row + Total
+140       srw.Range(srw.Cells(case_row, case_column), srw.Cells(case_last, case_column)).Interior.ColorIndex = xlNone
+150       srw.Range(srw.Cells(case_row, case_column), srw.Cells(case_last, case_column)).ClearComments
+160       If Total &gt; 1 Then
+      &apos;       Calculate High TF:
+170           srw.Range(&quot;Out_Case_Evaluation&quot;).EntireColumn.Insert shift:=xlShiftToRight
+180           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(0, -1).EntireColumn.Insert shift:=xlShiftToRight
+190           c5 = srw.Range(&quot;Out_Case_Evaluation&quot;).Column - 2
+200           c1 = srw.Range(&quot;Out_Equip_Tag&quot;).Column - c5
+210           c2 = srw.Range(&quot;Out_Scenario_Type&quot;).Column - c5
+220           c6 = srw.Range(&quot;Out_Incident&quot;).Column - c5
+230           c3 = srw.Range(&quot;Out_TF_Used&quot;).Column - c5
+240           c4 = srw.Range(&quot;Out_LPR&quot;).Column - c5
+250           c7 = srw.Range(&quot;Out_Compare&quot;).Column - c5
+260           r1 = srw.Range(&quot;Out_Case_Evaluation&quot;).Row + 1
+270           R2 = srw.Range(&quot;Out_Equip_Tag&quot;).End(xlDown).Row
+280           HighTFFormula = &quot;=IF(RC[&quot; &amp; c3 &amp; &quot;]=MAX(IF((R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c1 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c1 &amp; &quot;]=RC[&quot; &amp; c1 &amp; &quot;])*(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c6 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c6 &amp; &quot;]=RC[&quot; &amp; c6 &amp; &quot;])*(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c2 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c2 &amp; &quot;]=RC[&quot; &amp; c2 &amp; &quot;])*(NOT(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c7 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c7 &amp; &quot;]=&quot;&quot;Eliminated&quot;&quot;)),R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c3 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c3 &amp; &quot;])),TRUE,FALSE)&quot;
+290           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -2).FormulaArray = HighTFFormula
+300           srw.Activate
+310           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -2).AutoFill _
+                  Destination:=Range(srw.Cells(r1, c5), srw.Cells(R2, c5)), Type:=xlFillDefault
+320           c5 = srw.Range(&quot;Out_Case_Evaluation&quot;).Column - 1
+330           c1 = srw.Range(&quot;Out_Equip_Tag&quot;).Column - c5
+340           c2 = srw.Range(&quot;Out_Scenario_Type&quot;).Column - c5
+350           c6 = srw.Range(&quot;Out_Incident&quot;).Column - c5
+360           c3 = srw.Range(&quot;Out_TF_Used&quot;).Column - c5
+370           c4 = srw.Range(&quot;Out_LPR&quot;).Column - c5
+380           c7 = srw.Range(&quot;Out_Compare&quot;).Column - c5
+390           r1 = srw.Range(&quot;Out_Case_Evaluation&quot;).Row + 1
+400           R2 = srw.Range(&quot;Out_Equip_Tag&quot;).End(xlDown).Row
+410           Formula = &quot;=IF(AND(RC[-1],RC[&quot; &amp; c4 &amp; &quot;]=MAX(IF((R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c1 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c1 &amp; &quot;]=RC[&quot; &amp; c1 &amp; &quot;])*(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c2 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c2 &amp; &quot;]=RC[&quot; &amp; c2 &amp; &quot;])*(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c6 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c6 &amp; &quot;]=RC[&quot; &amp; c6 &amp; &quot;])*(NOT(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c7 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c7 &amp; &quot;]=&quot;&quot;Eliminated&quot;&quot;))*(R&quot; &amp; r1 &amp; &quot;C[-1]:R&quot; &amp; R2 &amp; &quot;C[-1]),R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c4 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c4 &amp; &quot;]))),&quot;&quot;High TF&quot;&quot;,&quot;&quot;&quot;&quot;)&quot;
+420           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -1).FormulaArray = Formula
+430           srw.Activate
+440           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -1).AutoFill _
+                  Destination:=Range(srw.Cells(r1, c5), srw.Cells(R2, c5)), Type:=xlFillDefault
+450           srw.Calculate
+
+470           srw.Range(srw.Cells(r1, c5), srw.Cells(R2, c5)).Value = srw.Range(srw.Cells(r1, c5), srw.Cells(R2, c5)).Value
+
+480           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(0, -2).EntireColumn.Delete shift:=xlShiftToLeft
+      &apos;       Calculate High IPL:
+490           srw.Range(&quot;Out_Case_Evaluation&quot;).EntireColumn.Insert shift:=xlShiftToRight
+500           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(0, -1).EntireColumn.Insert shift:=xlShiftToRight
+510           c5 = srw.Range(&quot;Out_Case_Evaluation&quot;).Column - 2
+520           c1 = srw.Range(&quot;Out_Equip_Tag&quot;).Column - c5
+530           c2 = srw.Range(&quot;Out_Scenario_Type&quot;).Column - c5
+540           c6 = srw.Range(&quot;Out_Incident&quot;).Column - c5
+550           c3 = srw.Range(&quot;Out_TF_Used&quot;).Column - c5
+560           c4 = srw.Range(&quot;Out_LPR&quot;).Column - c5
+570           c7 = srw.Range(&quot;Out_Compare&quot;).Column - c5
+580           r1 = srw.Range(&quot;Out_Case_Evaluation&quot;).Row + 1
+590           R2 = srw.Range(&quot;Out_Equip_Tag&quot;).End(xlDown).Row
+600           HighIPLFormula = &quot;=IF(RC[&quot; &amp; c4 &amp; &quot;]=MAX(IF((R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c1 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c1 &amp; &quot;]=RC[&quot; &amp; c1 &amp; &quot;])*(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c6 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c6 &amp; &quot;]=RC[&quot; &amp; c6 &amp; &quot;])*(NOT(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c7 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c7 &amp; &quot;]=&quot;&quot;Eliminated&quot;&quot;))*(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c2 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c2 &amp; &quot;]=RC[&quot; &amp; c2 &amp; &quot;]),R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c4 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c4 &amp; &quot;])),TRUE,FALSE)&quot;
+610           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -2).FormulaArray = HighIPLFormula
+620           srw.Activate
+630           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -2).AutoFill _
+                  Destination:=Range(srw.Cells(r1, c5), srw.Cells(R2, c5)), Type:=xlFillDefault
+640           c5 = srw.Range(&quot;Out_Case_Evaluation&quot;).Column - 1
+650           c1 = srw.Range(&quot;Out_Equip_Tag&quot;).Column - c5
+660           c2 = srw.Range(&quot;Out_Scenario_Type&quot;).Column - c5
+670           c6 = srw.Range(&quot;Out_Incident&quot;).Column - c5
+680           c3 = srw.Range(&quot;Out_TF_Used&quot;).Column - c5
+690           c4 = srw.Range(&quot;Out_LPR&quot;).Column - c5
+700           c7 = srw.Range(&quot;Out_Compare&quot;).Column - c5
+710           r1 = srw.Range(&quot;Out_Case_Evaluation&quot;).Row + 1
+720           R2 = srw.Range(&quot;Out_Equip_Tag&quot;).End(xlDown).Row
+730           Formula = &quot;=IF(AND(RC[-1],RC[&quot; &amp; c3 &amp; &quot;]=MAX(IF((R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c1 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c1 &amp; &quot;]=RC[&quot; &amp; c1 &amp; &quot;])*(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c6 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c6 &amp; &quot;]=RC[&quot; &amp; c6 &amp; &quot;])*(NOT(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c7 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c7 &amp; &quot;]=&quot;&quot;Eliminated&quot;&quot;))*(R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c2 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c2 &amp; &quot;]=RC[&quot; &amp; c2 &amp; &quot;])*(R&quot; &amp; r1 &amp; &quot;C[-1]:R&quot; &amp; R2 &amp; &quot;C[-1]),R&quot; &amp; r1 &amp; &quot;C[&quot; &amp; c3 &amp; &quot;]:R&quot; &amp; R2 &amp; &quot;C[&quot; &amp; c3 &amp; &quot;]))),&quot;&quot;High IPL&quot;&quot;,&quot;&quot;&quot;&quot;)&quot;
+740           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -1).FormulaArray = Formula
+750           srw.Activate
+760           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, -1).AutoFill _
+                  Destination:=Range(srw.Cells(r1, c5), srw.Cells(R2, c5)), Type:=xlFillDefault
+770           srw.Calculate
+
+790           srw.Range(srw.Cells(r1, c5), srw.Cells(R2, c5)).Value = srw.Range(srw.Cells(r1, c5), srw.Cells(R2, c5)).Value
+
+800           srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(0, -2).EntireColumn.Delete shift:=xlShiftToLeft
+810           R = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+820           For x = 1 To Total
+830               Do While srw.Cells(R, c) = &quot;&quot;
+840                   R = R + 1
+850               Loop
+860               tf = srw.Cells(R, srw.Range(&quot;Out_Case_Evaluation&quot;).Column).Offset(0, -2).Value
+870               IPL = srw.Cells(R, srw.Range(&quot;Out_Case_Evaluation&quot;).Column).Offset(0, -1).Value
+880               If tf = &quot;&quot; And IPL = &quot;&quot; Then
+890                   Evaluation = vbNullString
+900                   ElseIf tf = &quot;&quot; Then
+910                       Evaluation = &quot;High IPL&quot;
+920                   ElseIf IPL = &quot;&quot; Then
+930                       Evaluation = &quot;High TF&quot;
+940                   Else
+950                       Evaluation = &quot;High TF &amp; IPL&quot;
+960               End If
+970               If Not srw.Cells(R, srw.Range(&quot;Out_Case_Evaluation&quot;).Column) = Evaluation Then
+980                   If srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column) = &quot;New&quot; Then
+990                       srw.Cells(R, srw.Range(&quot;Out_Case_Evaluation&quot;).Column).Value = Evaluation
+1000                      Else
+1010                      srw.Cells(R, srw.Range(&quot;Out_Case_Evaluation&quot;).Column).AddComment.Text &quot;Old Value: &quot; &amp; srw.Cells(R, srw.Range(&quot;Out_Case_Evaluation&quot;).Column).Text
+1020                      srw.Cells(R, srw.Range(&quot;Out_Case_Evaluation&quot;).Column).Value = Evaluation
+1030                      srw.Cells(R, srw.Range(&quot;Out_Case_Evaluation&quot;).Column).Interior.ColorIndex = 35
+1040                  End If
+1050              End If
+1060              If srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column) = &quot;Eliminated&quot; And srw.Cells(R, srw.Range(&quot;Out_Source&quot;).Column) = &quot;Tool&quot; Then
+1070                  Select Case Range(&quot;Delete_Eliminated&quot;).Value
+                          Case &quot;Always&quot;
+1080                          srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).EntireRow.Delete shift:=xlShiftUp
+1090                      Case &quot;Only if No IPL&apos;s Entered&quot;
+1100                          If srw.Cells(R, srw.Range(&quot;Out_LPR&quot;).Column).Value = srw.Cells(R, srw.Range(&quot;Out_Gap&quot;).Column).Value Then
+1110                              srw.Cells(R, srw.Range(&quot;Out_Compare&quot;).Column).EntireRow.Delete shift:=xlShiftUp
+1120                              Else
+1130                              srw.Rows(R).Interior.ColorIndex = 15
+1140                              R = R + 1
+1150                          End If
+1160                      Case &quot;Never&quot;
+1170                          srw.Rows(R).Interior.ColorIndex = 15
+1180                          R = R + 1
+1190                  End Select
+1200                  Else
+1210                  R = R + 1
+1220              End If
+1230          Next x
+1240          srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(0, -1).EntireColumn.Delete shift:=xlShiftToLeft
+1250          srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(0, -1).EntireColumn.Delete shift:=xlShiftToLeft
+1260          ElseIf Total = 1 Then
+1270          If Not srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, 0).Value = &quot;High TF &amp; IPL&quot; Then
+1280              If srw.Range(&quot;Out_Compare&quot;).Offset(1, 0).Value = &quot;New&quot; Then
+1290                  srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, 0).Value = &quot;High TF &amp; IPL&quot;
+1300                  Else
+1310                  srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, 0).AddComment.Text &quot;Old Value: &quot; &amp; srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, 0).Text
+1320                  srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, 0).Value = &quot;High TF &amp; IPL&quot;
+1330                  srw.Range(&quot;Out_Case_Evaluation&quot;).Offset(1, 0).Interior.ColorIndex = 35
+1340              End If
+1350          End If
+1360      End If
+1365      Application.StatusBar = False
+1370      If macrorunning = False Then
+1390          Application.Calculation = xlCalculationAutomatic
+1400          Application.ScreenUpdating = True
+1410      End If
+End Sub
+Sub Update_User_Scenarios()
+10        Set usw = ThisWorkbook.Worksheets(&quot;User Scenario&quot;)
+20        Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+30        Set idw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+40        Set saw = ThisWorkbook.Worksheets(&quot;Scenario Analysis&quot;)
+50        Set rcw = ThisWorkbook.Worksheets(&quot;Release Calculations&quot;)
+60        Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+70        Set cdw = ThisWorkbook.Worksheets(&quot;Chemical Data&quot;)
+80        Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+90        Set scw = ThisWorkbook.Worksheets(&quot;Special Calcs&quot;)
+          Dim calc_result() As String
+100       For T = 1 To r_eq
+110           user_input_error = False
+120           R = r_eq_start + T - 1
+130           If srw.Cells(R, srw.Range(&quot;Out_Equip_Tag&quot;).Column) = mmw.Range(&quot;Equipment_Tag&quot;).Value Then
+                  
+140               If srw.Cells(R, srw.Range(&quot;Out_Source&quot;).Column) = &quot;User&quot; Then
+                      
+150                   changed = 0
+                      
+160                   Load_User_Scenario
+                      
+170                   If user_input_error = False Then
+                      
+180                       usw.Range(&quot;Row_Modifying&quot;).Value = R
+190                       Add_Custom_Scenario (False)
+195                   Else
+196                       user_scenario_update_failed = True
+                      
+200                   End If
+                  
+210               End If
+                  
+220           End If
+              
+230       Next T
+                      
+End Sub
+
+</script:module>

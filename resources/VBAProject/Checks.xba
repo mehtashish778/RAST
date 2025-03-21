@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Checks" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub Check_Property_Input()
+    For Each cell In ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Phys_Prop_Used&quot;)
+        If IsError(cell.Value) Then
+            MsgBox &quot;Error in physical property input for:&quot; &amp; Chr(13) &amp; Range(&quot;Equipment_Tag&quot;)
+            ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Activate
+            cell.Select
+            Application.ScreenUpdating = False
+            Application.Calculation = xlAutomatic
+            End
+        End If
+    Next cell
+    For Each cell In ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Mixture_Comp_Data&quot;)
+        If IsError(cell.Value) Then
+            MsgBox &quot;Error in physical property input for:&quot; &amp; Chr(13) &amp; Range(&quot;Equipment_Tag&quot;)
+            ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Activate
+            cell.Select
+            Application.ScreenUpdating = False
+            Application.Calculation = xlAutomatic
+            End
+        End If
+    Next cell
+    For Each cell In ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Mixture_Prop_Used&quot;)
+        If IsError(cell.Value) Then
+            MsgBox &quot;Error in physical property input for:&quot; &amp; Chr(13) &amp; Range(&quot;Equipment_Tag&quot;)
+            ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Activate
+            cell.Select
+            Application.ScreenUpdating = False
+            Application.Calculation = xlAutomatic
+            End
+        End If
+    Next cell
+End Sub
+Sub Check_Input_Data()
+    Set idw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+    Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+    Set plw = ThisWorkbook.Worksheets(&quot;Plant Layout&quot;)
+    If IsError(mmw.Range(&quot;Equipment&quot;).Value) Then
+        MsgBox &quot;Error in Equipment Type field.  Please correct to continue.&quot;
+        mmw.Activate
+        mmw.Range(&quot;Equipment&quot;).Select
+        Application.ScreenUpdating = False
+        Application.Calculation = xlAutomatic
+        End
+    End If
+    If mmw.Range(&quot;Equipment&quot;).Value = &quot;&quot; Then
+        MsgBox &quot;Equipment Type not entered.  Please enter to continue.&quot;
+        mmw.Activate
+        mmw.Range(&quot;Equipment&quot;).Select
+        Application.ScreenUpdating = False
+        Application.Calculation = xlAutomatic
+        End
+    End If
+    Set test_equip_type = siw.Range(&quot;Equipment_Type&quot;).Find(mmw.Range(&quot;Equipment&quot;).Value)
+    If test_equip_type Is Nothing Then
+        MsgBox &quot;Equipment Type entered is not found in standard list of equipment.  Check that equipment type is in pick list.&quot;
+        mmw.Activate
+        mmw.Range(&quot;Equipment&quot;).Select
+        Application.ScreenUpdating = False
+        Application.Calculation = xlAutomatic
+        End
+    End If
+    If IsError(mmw.Range(&quot;Equipment_Tag&quot;).Value) Then
+        MsgBox &quot;Error in Equipment Tag field.  Please correct to continue.&quot;
+        mmw.Activate
+        mmw.Range(&quot;Equipment_Tag&quot;).Select
+        Application.ScreenUpdating = False
+        Application.Calculation = xlAutomatic
+        End
+    End If
+    If mmw.Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+        MsgBox &quot;Equipment Tag not entered.  Please enter to continue.&quot;
+        mmw.Activate
+        mmw.Range(&quot;Equipment_Tag&quot;).Select
+        Application.ScreenUpdating = False
+        Application.Calculation = xlAutomatic
+        End
+    End If
+    If plw.Range(&quot;Public_Units&quot;).Value = &quot;&quot; Then
+        MsgBox &quot;Distance to Fence Line Units not entered.  Please enter to continue.&quot;
+        plw.Activate
+        plw.Range(&quot;Public_Units&quot;).Select
+        Application.ScreenUpdating = False
+        Application.Calculation = xlAutomatic
+        End
+    End If
+End Sub
+
+
+</script:module>

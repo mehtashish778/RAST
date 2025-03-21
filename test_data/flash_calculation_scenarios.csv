@@ -1,0 +1,6 @@
+Scenario_ID,Equipment_ID,Chemical_ID,Hole_Diameter_mm,Pressure_bar,Temperature_C,Wind_Speed_ms,Atmospheric_Stability
+FLASH-001,EQ-001,CHEM-001,10,10.5,150,2.5,D
+FLASH-002,EQ-002,CHEM-002,5,5.2,120,3.0,C
+FLASH-003,EQ-003,CHEM-003,15,2.1,25,1.5,F
+FLASH-004,EQ-004,CHEM-004,3,4.5,45,2.0,D
+FLASH-005,EQ-005,CHEM-005,8,3.8,180,3.5,B

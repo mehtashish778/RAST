@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Show_Hide" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub Show_All_Scenarios()
+&apos;    If macrorunning = False Then
+&apos;        Application.ScreenUpdating = False
+&apos;        Application.Calculation = xlCalculationManual
+&apos;    End If
+    Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+    siw.Unprotect
+    ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;).Cells.EntireRow.Hidden = False
+    ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;).Cells.EntireColumn.Hidden = False
+    siw.Protect
+&apos;    If macrorunning = False Then
+&apos;        Application.ScreenUpdating = True
+&apos;        Application.Calculation = xlAutomatic
+&apos;    End If
+End Sub
+Sub Show_All_Scenarios_Considered()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+    siw.Unprotect
+    If mmw.Range(&quot;Equipment&quot;).Value = &quot;&quot; Then
+        MsgBox &quot;Select an equipment type on the input sheet first.&quot;
+        Else
+        siw.Cells.EntireRow.Hidden = False
+        siw.Cells.EntireColumn.Hidden = False
+        siw.Range(&quot;A1&quot;).Select
+        For Each Equipment In siw.Range(&quot;Equipment_Type&quot;)
+            If Equipment.Value &lt;&gt; mmw.Range(&quot;Equipment&quot;).Value Then
+                siw.Columns(Equipment.Column).EntireColumn.Hidden = True
+                Else
+                equipment_column = Equipment.Column
+            End If
+        Next Equipment
+        For Each Scenario1 In siw.Range(&quot;Scenario_Type&quot;)
+            If siw.Cells(Scenario1.Row, equipment_column).Formula = &quot;&quot; Then
+                siw.Rows(Scenario1.Row).EntireRow.Hidden = True
+            End If
+        Next Scenario1
+        For Each initiating_event In siw.Range(&quot;Initiating_Event&quot;)
+            x = 0
+            For Each Scenario2 In siw.Range(&quot;Scenario_Type&quot;)
+                If siw.Rows(Scenario2.Row).EntireRow.Hidden = False Then
+                    If Not siw.Cells(Scenario2.Row, initiating_event.Column).Formula = &quot;&quot; Then
+                        x = x + 1
+                    End If
+                End If
+            Next Scenario2
+            If x = 0 Then
+                siw.Columns(initiating_event.Column).EntireColumn.Hidden = True
+            End If
+        Next initiating_event
+        For Each incident In siw.Range(&quot;incident&quot;)
+            x = 0
+            For Each Scenario3 In siw.Range(&quot;Scenario_Type&quot;)
+                If siw.Rows(Scenario3.Row).EntireRow.Hidden = False Then
+                    If Not siw.Cells(Scenario3.Row, incident.Column).Formula = &quot;&quot; Then
+                        x = x + 1
+                    End If
+                End If
+            Next Scenario3
+            If x = 0 Then
+                siw.Columns(incident.Column).EntireColumn.Hidden = True
+            End If
+        Next incident
+    End If
+    siw.Protect
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+Sub Show_Only_Applicable_Scenarios()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+    siw.Unprotect
+    If mmw.Range(&quot;Equipment&quot;).Value = &quot;&quot; Then
+        MsgBox &quot;Select an equipment type on the input sheet first.&quot;
+        Else
+        siw.Cells.EntireRow.Hidden = False
+        siw.Cells.EntireColumn.Hidden = False
+        siw.Range(&quot;A1&quot;).Select
+        For Each Equipment In siw.Range(&quot;Equipment_Type&quot;)
+            If Equipment.Value &lt;&gt; mmw.Range(&quot;Equipment&quot;).Value Then
+                siw.Columns(Equipment.Column).EntireColumn.Hidden = True
+                Else
+                equipment_column = Equipment.Column
+            End If
+        Next Equipment
+        For Each Scenario1 In siw.Range(&quot;Scenario_Type&quot;)
+            If Not IsError(siw.Cells(Scenario1.Row, equipment_column)) Then
+                If siw.Cells(Scenario1.Row, equipment_column) &lt;&gt; &quot;X&quot; Then
+                    siw.Rows(Scenario1.Row).EntireRow.Hidden = True
+                End If
+            End If
+        Next Scenario1
+        For Each initiating_event In siw.Range(&quot;Initiating_Event&quot;)
+            x = 0
+            For Each Scenario2 In siw.Range(&quot;Scenario_Type&quot;)
+                If siw.Rows(Scenario2.Row).EntireRow.Hidden = False Then
+                    If siw.Cells(Scenario2.Row, initiating_event.Column) = &quot;X&quot; Then
+                        x = x + 1
+                    End If
+                End If
+            Next Scenario2
+            If x = 0 Then
+                siw.Columns(initiating_event.Column).EntireColumn.Hidden = True
+            End If
+        Next initiating_event
+        For Each incident In siw.Range(&quot;incident&quot;)
+            x = 0
+            For Each Scenario3 In siw.Range(&quot;Scenario_Type&quot;)
+                If siw.Rows(Scenario3.Row).EntireRow.Hidden = False Then
+                    If IsError(siw.Cells(Scenario3.Row, incident.Column)) Then
+                        x = x + 1
+                        Else
+                        If siw.Cells(Scenario3.Row, incident.Column) = &quot;X&quot; Then
+                            x = x + 1
+                        End If
+                    End If
+                End If
+            Next Scenario3
+            If x = 0 Then
+                siw.Columns(incident.Column).EntireColumn.Hidden = True
+            End If
+        Next incident
+    End If
+    siw.Protect
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+
+
+</script:module>

@@ -1,0 +1,6 @@
+Equipment_ID,Equipment_Type,Equipment_Description,Operating_Pressure,Operating_Temperature,Volume,Material_of_Construction,Installation_Date,Last_Inspection_Date
+EQ-001,Reactor,Primary Reaction Vessel,10.5,150,5000,Stainless Steel 316,2022-01-15,2023-12-01
+EQ-002,Heat Exchanger,Product Cooler,5.2,120,1000,Carbon Steel,2022-02-20,2023-11-15
+EQ-003,Storage Tank,Raw Material Storage,2.1,25,10000,Carbon Steel,2021-06-10,2023-10-20
+EQ-004,Pump,Transfer Pump P-101,4.5,45,50,Stainless Steel 304,2022-03-01,2023-12-15
+EQ-005,Column,Distillation Column,3.8,180,3000,Stainless Steel 316L,2021-08-15,2023-11-01

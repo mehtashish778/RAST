@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Set_Up" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub Create_Error_Message_Hyperlinks()
+    Set iecw = ThisWorkbook.Worksheets(&quot;Input Error Check&quot;)
+    iecw.Unprotect
+    R = iecw.UsedRange.Rows.Count
+    c1 = iecw.Range(&quot;Error_Message&quot;).Column
+    c2 = iecw.Range(&quot;Hyperlink_Name&quot;).Column
+    For x = iecw.Range(&quot;Error_Message&quot;).Row + 1 To R
+        If iecw.Cells(x, c1).Hyperlinks.Count &gt; 0 Then
+            iecw.Cells(x, c1).Hyperlinks.Delete
+        End If
+        If iecw.Cells(x, c2).Value &lt;&gt; &quot;&quot; Then
+            iecw.Hyperlinks.Add anchor:=iecw.Cells(x, c1), Address:=&quot;&quot;, SubAddress:=iecw.Cells(x, c2).Text
+        End If
+    Next x
+    iecw.Protect
+End Sub
+Sub Check_Version()
+
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.CalculateBeforeSave = False
+    Application.DisplayAlerts = False
+    ThisWorkbook.UpdateLinks = xlUpdateLinksAlways
+    ThisWorkbook.Worksheets(&quot;Revision History&quot;).Unprotect
+    
+        ThisWorkbook.Worksheets(&quot;Revision History&quot;).Range(&quot;Current_Version&quot;).Formula = _
+        &quot;=&apos;&quot; &amp; ThisWorkbook.Worksheets(&quot;Revision History&quot;).Range(&quot;Path&quot;).Value &amp; &quot;Scenario Results&apos;!$A$1&quot;
+    
+    MsgBox &quot;=&apos;&quot; &amp; ThisWorkbook.Worksheets(&quot;Revision History&quot;).Range(&quot;Path&quot;).Value &amp; &quot;Revision History&apos;!This_Version&quot;
+    ThisWorkbook.Worksheets(&quot;Revision History&quot;).Range(&quot;Current_Version&quot;).Formula = _
+        &quot;=&apos;&quot; &amp; ThisWorkbook.Worksheets(&quot;Revision History&quot;).Range(&quot;Path&quot;).Value &amp; &quot;Revision History&apos;!This_Version&quot;
+    ThisWorkbook.Worksheets(&quot;Revision History&quot;).Calculate
+    ThisWorkbook.Worksheets(&quot;Revision History&quot;).Protect
+    On Error Resume Next
+    this_version = Range(&quot;This_Version&quot;).Value
+    current_version = Range(&quot;Current_Version&quot;).Value
+    
+    If current_version &gt; this_version Then
+        MsgBox &quot;This version of the tool (&quot; &amp; this_version &amp; &quot;) is out of date.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Consider updating to &quot; &amp; current_version
+        Else
+        MsgBox &quot;This version of the tool is the most current.&quot;
+    End If
+    ThisWorkbook.Worksheets(&quot;Revision History&quot;).Unprotect
+    ThisWorkbook.Worksheets(&quot;Revision History&quot;).Range(&quot;Current_Version&quot;).Value = &quot;&quot;
+    ThisWorkbook.Worksheets(&quot;Revision History&quot;).Protect
+    Application.DisplayAlerts = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+Sub Input_Data_Units_SI()
+    Set eiw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+    Set cdw = ThisWorkbook.Worksheets(&quot;Chemical Data&quot;)
+    Set pcw = ThisWorkbook.Worksheets(&quot;Process Conditions&quot;)
+    Set plw = ThisWorkbook.Worksheets(&quot;Plant Layout&quot;)
+    Set riw = ThisWorkbook.Worksheets(&quot;Reaction Input&quot;)
+    
+    If MsgBox(&quot;Values entered already will not be converted, only the unit fields will be changed.&quot; &amp; Chr(13) &amp; &quot;Are you sure you want to continue?&quot;, vbOKCancel) = vbOK Then
+        Application.ScreenUpdating = False
+
+        eiw.Range(&quot;Volume_Units&quot;).Value = &quot;liter&quot;
+        eiw.Range(&quot;MAWP_Units&quot;).Value = &quot;bar&quot;
+        eiw.Range(&quot;Failure_T_Units&quot;).Value = &quot;C&quot;
+        eiw.Range(&quot;Embrittle_T_Units&quot;).Value = &quot;C&quot;
+        eiw.Range(&quot;Mass_Equip_Units&quot;).Value = &quot;kg&quot;
+        eiw.Range(&quot;Motor_Units&quot;).Value = &quot;Kwatt&quot;
+        eiw.Range(&quot;Sur_Area_Units&quot;).Value = &quot;sq m&quot;
+        eiw.Range(&quot;Equipment_Elevation_Units&quot;).Value = &quot;m&quot;
+        eiw.Range(&quot;Drain_Units&quot;).Value = &quot;mm&quot;
+        eiw.Range(&quot;HT_Area_Units&quot;).Value = &quot;sq m&quot;
+        eiw.Range(&quot;U_Units&quot;).Value = &quot;Kwatt /sq m C&quot;
+        eiw.Range(&quot;Heating_T_Units&quot;).Value = &quot;C&quot;
+        eiw.Range(&quot;Heating_P_Units&quot;).Value = &quot;bar&quot;
+        eiw.Range(&quot;Tube_D_Units&quot;).Value = &quot;mm&quot;
+        eiw.Range(&quot;Coolant_Area_Units&quot;).Value = &quot;sq m&quot;
+        eiw.Range(&quot;Coolant_U_Units&quot;).Value = &quot;Kwatt /sq m C&quot;
+        eiw.Range(&quot;Coolant_Temp_Units&quot;).Value = &quot;C&quot;
+        eiw.Range(&quot;D_Units&quot;).Value = &quot;mm&quot;
+        eiw.Range(&quot;Pipe_Length_Units&quot;).Value = &quot;m&quot;
+        eiw.Range(&quot;Relief_Set_Units&quot;).Value = &quot;bar&quot;
+        eiw.Range(&quot;Relief_Size_Units&quot;).Value = &quot;mm&quot;
+        eiw.Range(&quot;Relief_Flowrate_Units&quot;).Value = &quot;kg/min&quot;
+        eiw.Range(&quot;Relief_Discharge_Units&quot;).Value = &quot;mm&quot;
+        eiw.Range(&quot;Relief_Elevation_Units&quot;).Value = &quot;m&quot;
+        eiw.Range(&quot;WorkArea_Distance_Units&quot;).Value = &quot;m&quot;
+        eiw.Range(&quot;WorkArea_Distance2_Units&quot;).Value = &quot;m&quot;
+        eiw.Range(&quot;WorkArea_Elevation_Units&quot;).Value = &quot;m&quot;
+        eiw.Range(&quot;Coolant_Temp_Units&quot;).Value = &quot;C&quot;
+        eiw.Range(&quot;DrumOven_Volume_Units&quot;).Value = &quot;cu m&quot;
+        eiw.Range(&quot;Public_Relief_Units&quot;).Value = &quot;m&quot;
+        eiw.Range(&quot;Occ_Bldg_Relief_Units&quot;).Value = &quot;m&quot;
+        
+        pcw.Range(&quot;Ambient_Temp_Units&quot;).Value = &quot;C&quot;
+        cdw.Range(&quot;T_Units&quot;).Value = &quot;C&quot;
+        cdw.Range(&quot;P_Units&quot;).Value = &quot;bar&quot;
+        
+        pcw.Range(&quot;Inventory_Units&quot;).Value = &quot;kg&quot;
+        pcw.Range(&quot;Dh_Units&quot;).Value = &quot;m&quot;
+        pcw.Range(&quot;Max_Feed_P_Units&quot;).Value = &quot;bar&quot;
+        pcw.Range(&quot;Feedrate_Units&quot;).Value = &quot;kg/min&quot;
+        pcw.Range(&quot;Max_Inert_P_Units&quot;).Value = &quot;bar&quot;
+        pcw.Range(&quot;Inert_FeedRate_Units&quot;).Value = &quot;kg/min&quot;
+        pcw.Range(&quot;Downstr_P_Units&quot;).Value = &quot;bar&quot;
+        pcw.Range(&quot;Backflow_Units&quot;).Value = &quot;kg/min&quot;
+        pcw.Range(&quot;Feed_Temp_Units&quot;).Value = &quot;C&quot;
+        
+        plw.Range(&quot;Public_Units&quot;).Value = &quot;m&quot;
+        plw.Range(&quot;Public2_Units&quot;).Value = &quot;m&quot;
+        plw.Range(&quot;Dike_Area_Units&quot;).Value = &quot;sq m&quot;
+        plw.Range(&quot;Flam_In_Area_Units&quot;).Value = &quot;kg&quot;
+        plw.Range(&quot;Flam_Adjacent_Units&quot;).Value = &quot;kg&quot;
+        plw.Range(&quot;Adjacent_Dike_Units&quot;).Value = &quot;sq m&quot;
+        plw.Range(&quot;Enclosed_Process_Volume_Units&quot;).Value = &quot;cu m&quot;
+        plw.Range(&quot;Occ_Bldg_Units&quot;).Value = &quot;m&quot;
+        plw.Range(&quot;OccBldg_Elevation_Units&quot;).Value = &quot;m&quot;
+        plw.Range(&quot;Occ_Bldg_Cntr_Units&quot;).Value = &quot;m&quot;
+        plw.Range(&quot;Occ_Bldg2_Units&quot;).Value = &quot;m&quot;
+        plw.Range(&quot;OccBldg2_Elevation_Units&quot;).Value = &quot;m&quot;
+        plw.Range(&quot;Occ_Bldg2_Cntr_Units&quot;).Value = &quot;m&quot;
+        plw.Range(&quot;Zone1_Units&quot;).Value = &quot;m&quot;
+        
+
+        Application.ScreenUpdating = True
+    End If
+End Sub
+Sub Input_Data_Units_English()
+    Set eiw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+    Set cdw = ThisWorkbook.Worksheets(&quot;Chemical Data&quot;)
+    Set pcw = ThisWorkbook.Worksheets(&quot;Process Conditions&quot;)
+    Set plw = ThisWorkbook.Worksheets(&quot;Plant Layout&quot;)
+    Set riw = ThisWorkbook.Worksheets(&quot;Reaction Input&quot;)
+    
+    If MsgBox(&quot;Values entered already will not be converted, only the unit fields will be changed.&quot; &amp; Chr(13) &amp; &quot;Are you sure you want to continue?&quot;, vbOKCancel) = vbOK Then
+        Application.ScreenUpdating = False
+
+        eiw.Range(&quot;Volume_Units&quot;).Value = &quot;gal&quot;
+        eiw.Range(&quot;MAWP_Units&quot;).Value = &quot;psi&quot;
+        eiw.Range(&quot;Failure_T_Units&quot;).Value = &quot;F&quot;
+        eiw.Range(&quot;Embrittle_T_Units&quot;).Value = &quot;F&quot;
+        eiw.Range(&quot;Mass_Equip_Units&quot;).Value = &quot;lb&quot;
+        eiw.Range(&quot;Motor_Units&quot;).Value = &quot;HP&quot;
+        eiw.Range(&quot;Sur_Area_Units&quot;).Value = &quot;sq ft&quot;
+        eiw.Range(&quot;Equipment_Elevation_Units&quot;).Value = &quot;ft&quot;
+        eiw.Range(&quot;Drain_Units&quot;).Value = &quot;in&quot;
+        eiw.Range(&quot;HT_Area_Units&quot;).Value = &quot;sq ft&quot;
+        eiw.Range(&quot;U_Units&quot;).Value = &quot;BTU/hr sq ft F&quot;
+        eiw.Range(&quot;Heating_T_Units&quot;).Value = &quot;C&quot;
+        eiw.Range(&quot;Heating_P_Units&quot;).Value = &quot;psi&quot;
+        eiw.Range(&quot;Tube_D_Units&quot;).Value = &quot;in&quot;
+        eiw.Range(&quot;Coolant_Area_Units&quot;).Value = &quot;sq ft&quot;
+        eiw.Range(&quot;Coolant_U_Units&quot;).Value = &quot;Btu/hr sq ft F&quot;
+        eiw.Range(&quot;Coolant_Temp_Units&quot;).Value = &quot;C&quot;
+        eiw.Range(&quot;D_Units&quot;).Value = &quot;in&quot;
+        eiw.Range(&quot;Pipe_Length_Units&quot;).Value = &quot;ft&quot;
+        eiw.Range(&quot;Relief_Set_Units&quot;).Value = &quot;psi&quot;
+        eiw.Range(&quot;Relief_Size_Units&quot;).Value = &quot;in&quot;
+        eiw.Range(&quot;Relief_Flowrate_Units&quot;).Value = &quot;Lb/min&quot;
+        eiw.Range(&quot;Relief_Discharge_Units&quot;).Value = &quot;in&quot;
+        eiw.Range(&quot;Relief_Elevation_Units&quot;).Value = &quot;ft&quot;
+        eiw.Range(&quot;WorkArea_Distance_Units&quot;).Value = &quot;ft&quot;
+        eiw.Range(&quot;WorkArea_Distance2_Units&quot;).Value = &quot;ft&quot;
+        eiw.Range(&quot;WorkArea_Elevation_Units&quot;).Value = &quot;ft&quot;
+        eiw.Range(&quot;Coolant_Temp_Units&quot;).Value = &quot;C&quot;
+        eiw.Range(&quot;DrumOven_Volume_Units&quot;).Value = &quot;cu ft&quot;
+        eiw.Range(&quot;Public_Relief_Units&quot;).Value = &quot;ft&quot;
+        eiw.Range(&quot;Occ_Bldg_Relief_Units&quot;).Value = &quot;ft&quot;
+        
+        pcw.Range(&quot;Ambient_Temp_Units&quot;).Value = &quot;C&quot;
+        cdw.Range(&quot;T_Units&quot;).Value = &quot;C&quot;
+        cdw.Range(&quot;P_Units&quot;).Value = &quot;psi&quot;
+        
+        pcw.Range(&quot;Inventory_Units&quot;).Value = &quot;Lb&quot;
+        pcw.Range(&quot;Dh_Units&quot;).Value = &quot;ft&quot;
+        pcw.Range(&quot;Max_Feed_P_Units&quot;).Value = &quot;psi&quot;
+        pcw.Range(&quot;Feedrate_Units&quot;).Value = &quot;Lb/min&quot;
+        pcw.Range(&quot;Max_Inert_P_Units&quot;).Value = &quot;psi&quot;
+        pcw.Range(&quot;Inert_FeedRate_Units&quot;).Value = &quot;Lb/min&quot;
+        pcw.Range(&quot;Downstr_P_Units&quot;).Value = &quot;psi&quot;
+        pcw.Range(&quot;Backflow_Units&quot;).Value = &quot;lb/min&quot;
+        pcw.Range(&quot;Feed_Temp_Units&quot;).Value = &quot;C&quot;
+        
+        plw.Range(&quot;Public_Units&quot;).Value = &quot;ft&quot;
+        plw.Range(&quot;Public2_Units&quot;).Value = &quot;ft&quot;
+        plw.Range(&quot;Dike_Area_Units&quot;).Value = &quot;sq ft&quot;
+        plw.Range(&quot;Flam_In_Area_Units&quot;).Value = &quot;Lb&quot;
+        plw.Range(&quot;Flam_Adjacent_Units&quot;).Value = &quot;Lb&quot;
+        plw.Range(&quot;Adjacent_Dike_Units&quot;).Value = &quot;sq ft&quot;
+        plw.Range(&quot;Enclosed_Process_Volume_Units&quot;).Value = &quot;cu ft&quot;
+        plw.Range(&quot;Occ_Bldg_Units&quot;).Value = &quot;ft&quot;
+        plw.Range(&quot;OccBldg_Elevation_Units&quot;).Value = &quot;ft&quot;
+        plw.Range(&quot;Occ_Bldg_Cntr_Units&quot;).Value = &quot;ft&quot;
+        plw.Range(&quot;Occ_Bldg2_Units&quot;).Value = &quot;ft&quot;
+        plw.Range(&quot;OccBldg2_Elevation_Units&quot;).Value = &quot;ft&quot;
+        plw.Range(&quot;Occ_Bldg2_Cntr_Units&quot;).Value = &quot;ft&quot;
+        plw.Range(&quot;Zone1_Units&quot;).Value = &quot;ft&quot;
+
+        Application.ScreenUpdating = True
+    End If
+End Sub
+
+
+
+</script:module>

@@ -1,0 +1,1509 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Load_or_Import" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub Merge_Data()
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+Dim lastrow As Integer
+On Error GoTo General_Error
+macrorunning = True
+Set cpw = ThisWorkbook.Worksheets(&quot;Chemical Properties&quot;)
+Set etw = ThisWorkbook.Worksheets(&quot;Equipment Table&quot;)
+Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+filetoopen = Application.GetOpenFilename(Title:=&quot;Select File to be Imported&quot;, MultiSelect:=False)
+If Right(filetoopen, 4) &lt;&gt; &quot;xlsm&quot; And Right(filetoopen, 3) &lt;&gt; &quot;xls&quot; Then
+    MsgBox &quot;File selected is not *.xlsm format. Please re-import and select proper file type.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Note: Old copies of tool must be saved as an Excel Macro-Enabled Workbook (*.xlsm) file first before importing.&quot;
+    GoTo Opening_File_Error
+End If
+If filetoopen &lt;&gt; False Then
+    On Error GoTo Opening_File_Undefined_Error
+    Application.EnableEvents = False
+    Workbooks.Open Filename:=filetoopen, UpdateLinks:=0
+    On Error GoTo General_Error
+    import = ActiveWorkbook.Name
+    Set cpwi = Workbooks(import).Worksheets(&quot;Chemical Properties&quot;)
+    Set etwi = Workbooks(import).Worksheets(&quot;Equipment Table&quot;)
+    Set srwi = Workbooks(import).Worksheets(&quot;Scenario Results&quot;)
+    Set lwi = Workbooks(import).Worksheets(&quot;LOPA Worksheet&quot;)
+    If Not srw.Range(&quot;Version&quot;).Value = srwi.Range(&quot;Version&quot;).Value Then
+  MsgBox &quot;File being merged must first be imported into a Version &quot; &amp; srw.Range(&quot;Version&quot;).Value &amp; &quot; copy of tool.&quot;
+  ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Activate
+  Workbooks(import).Close savechanges:=False
+  GoTo Opening_File_Error
+    End If
+    If srwi.Visible = False Then
+  Application.StatusBar = &quot;Please Wait...Preparing &quot; &amp; import &amp; &quot; for importing&quot;
+  If lwi.Visible = True And Not lwi.Range(&quot;LOPA_Case_No&quot;).Offset(1, 0).Value = &quot;&quot; Then
+      Application.Run &quot;&apos;&quot; &amp; import &amp; &quot;&apos;!Write_LOPA_Back&quot;
+  End If
+    End If
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    macrorunning = True
+    Application.StatusBar = &quot;Please Wait...Merging data from &quot; &amp; import
+    For Each s In Workbooks(import).Worksheets
+  Select Case s.Name
+  Case &quot;Chemical Properties&quot;
+      Application.StatusBar = &quot;Please Wait...Merging User Chemicals from &quot; &amp; import
+      cpw.Unprotect
+      Total = cpwi.UsedRange.Rows.Count - cpwi.Range(&quot;Chemical_C&quot;).Row
+      R = cpwi.Range(&quot;Chemical_C&quot;).Row + 1
+      For x = 1 To Total
+          Chem_Name = cpwi.Cells(R, cpwi.Range(&quot;Chemical_C&quot;).Column).Text
+          If cpwi.Cells(R, cpwi.Range(&quot;Prop_Source_C&quot;).Column).Text = &quot;User&quot; Then
+              If cpw.Columns(cpw.Range(&quot;Chemical_C&quot;).Column).Find(What:=Chem_Name, After:=cpw.Range(&quot;Chemical_C&quot;), LookIn:=xlFormulas, lookat:=xlWhole, MatchCase:=False) Is Nothing Then
+                  cpw.Range(&quot;a3&quot;).EntireRow.Insert
+                  r_to = 3
+              Else
+                  r_to = cpw.Columns(cpw.Range(&quot;Chemical_C&quot;).Column).Find(What:=Chem_Name, After:=cpw.Range(&quot;Chemical_C&quot;), LookIn:=xlFormulas, lookat:=xlWhole, MatchCase:=False).Row
+              End If
+              On Error Resume Next
+              With cpw
+                  .Cells(r_to, .Range(&quot;Chemical_C&quot;).Column).Value = Chem_Name
+                  .Cells(r_to, .Range(&quot;Cas_No_C&quot;).colume).Value = cpwi.Cells(R, cpwi.Range(&quot;Cas_No_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Prop_Source_C&quot;).Column).Value = &quot;User&quot;
+                  .Cells(r_to, .Range(&quot;Frac_Key_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Frac_Key_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Volatility_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Volatility_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Azeotrope_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Azeotrope_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;NonKey_Mw_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NonKey_Mw_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;NonKey_ERPG_2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NonKey_ERPG_2_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;NonKey_ERPG_3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NonKey_ERPG_3_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;NonKey_LFL_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NonKey_LFL_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Mw_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Mw_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;ERPG2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;ERPG2_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;ERPG3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;ERPG3_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;BP_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;BP_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;MP_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;MP_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Dust_Class_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Dust_Class_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Dust_Size_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Dust_Size_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Fraction_Dust_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Fraction_Dust_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Dust_MIE_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Dust_MIE_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Dust_Hybrid_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Dust_Hybrid_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;FP_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;FP_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;LFL_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LFL_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;NH_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NH_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;NF_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NF_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;NR_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NR_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;EI_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;EI_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;FS_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;FS_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;DTRS_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;DTRS_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;ATRS_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;ATRS_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Conductive_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Conductive_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Warning_Prop_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Warning_Prop_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;LD_A_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LD_A_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;LD_B_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LD_B_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;LCP_A_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LCP_A_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;LCP_B_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LCP_B_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;HV_A_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;HV_A_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;HV_B_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;HV_B_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;HV_C_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;HV_C_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;VP_A_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;VP_A_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;VP_B_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;VP_B_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;VP_C_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;VP_C_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Rx_Data_Reference_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Rx_Data_Reference_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;DHR_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;DHR_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Act_Energy_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Act_Energy_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Tdet_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Tdet_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Rdet_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Rdet_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Gas_Gen_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Gas_Gen_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Gas_Exo_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Gas_Exo_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Monomer_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Monomer_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;phi_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;phi_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Test_Method_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Test_Method_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Chemical_1_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_1_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Chemical_2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_2_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Chemical_3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_3_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Chemical_4_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_4_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;Chemical_5_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_5_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;WtFract_2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;WtFract_2_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;WtFract_3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;WtFract_3_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;WtFract_4_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;WtFract_4_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;WtFract_5_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;WtFract_5_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;SecPhase_1_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhase_1_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;SecPhase_2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhasel_2_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;SecPhase_3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhase_3_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;SecPhase_4_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhase_4_C&quot;).Column).Value
+                  .Cells(r_to, .Range(&quot;SecPhase_5_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhase_5_C&quot;).Column).Value
+              End With
+              On Error GoTo General_Error
+          End If
+          R = R + 1
+      Next x
+      cpw.Activate
+      cpw.Range(&quot;Chem_Table&quot;).Offset(1, 0).Sort key1:=Range(&quot;a3&quot;), Order1:=xlAscending, Header:=xlNo
+      cpw.Protect AllowFiltering:=True
+      ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Activate
+  Case &quot;Equipment Table&quot;
+      Application.StatusBar = &quot;Please Wait...Importing Equipment Table from &quot; &amp; import
+      Total = etwi.UsedRange.Rows.Count - etwi.Range(&quot;T_Equipment_Tag&quot;).Row
+      R = etwi.Range(&quot;T_Equipment_Tag&quot;).Row + 1
+      r_to = etw.Range(&quot;T_Equipment_Tag&quot;).Row + 1
+      etw.Range(etw.Cells(r_to, 1), etw.Cells(etw.UsedRange.Rows.Count, etw.UsedRange.Columns.Count)).Rows.Interior.ColorIndex = xlNone
+      etw.Range(etw.Cells(r_to, 1), etw.Cells(etw.UsedRange.Rows.Count, etw.UsedRange.Columns.Count)).Rows.ClearComments
+      equip_tag_too_long = False
+      For x = 1 To Total
+          new_equipment = False
+          equip_tag = etwi.Cells(R, etwi.Range(&quot;T_Equipment_Tag&quot;).Column).Text
+          If Len(equip_tag) &gt; 256 Then
+            equip_tag_too_long = True
+            Else
+            If etw.Columns(etw.Range(&quot;T_Equipment_Tag&quot;).Column).Find(What:=equip_tag, After:=etw.Range(&quot;T_Equipment_Tag&quot;), LookIn:=xlFormulas, lookat:=xlWhole, MatchCase:=False) Is Nothing Then
+                etw.Range(&quot;T_Equipment_Tag&quot;).Offset(2, 0).EntireRow.Insert
+                r_to = etw.Range(&quot;T_Equipment_Tag&quot;).Offset(2, 0).Row
+                etw.Cells(r_to, 1).EntireRow.Interior.ColorIndex = xlNone
+                etw.Cells(r_to, 1).EntireRow.ClearComments
+                new_equipment = True
+            Else
+                r_to = etw.Columns(etw.Range(&quot;T_Equipment_Tag&quot;).Column).Find(What:=equip_tag, After:=etw.Range(&quot;T_Equipment_Tag&quot;), LookIn:=xlFormulas, lookat:=xlWhole, MatchCase:=False).Row
+                new_equipment = False
+            End If
+            For Each input_name In ThisWorkbook.Names
+                On Error Resume Next
+                Set test_name = Nothing
+                Set test_name = etwi.Range(input_name.Name)
+                On Error GoTo General_Error
+                If Not test_name Is Nothing Then
+                    blank_import = False
+                    blank_destination = False
+                    compare_entries = True
+                    skip_entries = False
+                    If Not input_name.Name = &quot;Equipment_Table_Headings&quot; And InStr(1, input_name.RefersTo, &quot;&apos;Equipment Table&apos;!&quot;, vbTextCompare) &gt; 0 And Mid(input_name.Name, 2, 1) = &quot;_&quot; Then
+                        If new_equipment = False Then
+                            If IsEmpty(etw.Cells(r_to, etw.Range(input_name.Name).Column)) Then
+                                blank_destination = True
+                            End If
+                            If IsEmpty(etwi.Cells(R, etwi.Range(input_name.Name).Column)) Then
+                                blank_import = True
+                            End If
+                            If blank_destination And blank_import Then
+                                compare_entries = False
+                            End If
+                            If IsError(etwi.Cells(R, etwi.Range(input_name.Name).Column)) Then
+                                compare_entries = False
+                                skip_entries = True
+                                Else
+                                If IsError(etw.Cells(r_to, etw.Range(input_name.Name).Column)) Then
+                                    compare_entries = False
+                                End If
+                            End If
+                            If compare_entries = True Then
+                                If Not etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = etwi.Cells(R, etwi.Range(input_name.Name).Column).Value Then
+                                    etw.Cells(r_to, etw.Range(input_name.Name).Column).AddComment.Text &quot;Old Value: &quot; &amp; etw.Cells(r_to, etw.Range(input_name.Name).Column).Text
+                                    etw.Cells(r_to, etw.Range(input_name.Name).Column).Interior.ColorIndex = 35
+                                End If
+                            End If
+                        End If
+                        If skip_entries = False Then
+                            etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = etwi.Cells(R, etwi.Range(input_name.Name).Column).Value
+                        End If
+                        On Error GoTo General_Error
+                    End If
+                End If
+            Next input_name
+        End If
+        R = R + 1
+      Next x
+      
+      R = Application.WorksheetFunction.CountA(etw.Columns(etw.Range(&quot;T_Equipment_Tag&quot;).Column))
+      c = etw.Range(&quot;Equipment_Table_Headings&quot;).Columns(etw.Range(&quot;Equipment_Table_Headings&quot;).Columns.Count).Column
+      If R &gt; etw.Range(&quot;Equipment_Table_Headings&quot;).Row Then
+        With etw.Range(etw.Range(&quot;Equipment_Table_Headings&quot;), etw.Cells(R, c))
+            .Borders(xlEdgeLeft).LineStyle = xlContinuous
+            .Borders(xlEdgeTop).LineStyle = xlContinuous
+            .Borders(xlEdgeBottom).LineStyle = xlContinuous
+            .Borders(xlEdgeRight).LineStyle = xlContinuous
+            .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+            .Borders(xlInsideVertical).LineStyle = xlContinuous
+            .Borders(xlEdgeLeft).Weight = xlThin
+            .Borders(xlEdgeTop).Weight = xlThin
+            .Borders(xlEdgeBottom).Weight = xlThin
+            .Borders(xlEdgeRight).Weight = xlThin
+            .Borders(xlInsideHorizontal).Weight = xlThin
+            .Borders(xlInsideVertical).Weight = xlThin
+        End With
+      End If
+      
+      With etw.Range(&quot;Equipment_Table_Headings&quot;)
+          .Borders(xlEdgeLeft).Weight = xlMedium
+          .Borders(xlEdgeTop).Weight = xlMedium
+          .Borders(xlEdgeBottom).Weight = xlMedium
+          .Borders(xlEdgeRight).Weight = xlMedium
+      End With
+  Case &quot;Scenario Results&quot;
+      Application.StatusBar = &quot;Please Wait...Importing Scenario Results from &quot; &amp; import
+      Total = srwi.UsedRange.Rows.Count - srwi.Range(&quot;Out_Scenario_No&quot;).Row
+      R = srwi.Range(&quot;Out_Scenario_No&quot;).Row + 1
+      r_to = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+        If srw.FilterMode = True Then
+            filt = srw.AutoFilter.Range.Address
+            srw.Range(filt).AutoFilter
+            srw.Range(filt).AutoFilter
+        End If
+      srw.Range(srw.Cells(r_to, 1), srw.Cells(srw.UsedRange.Rows.Count, srw.UsedRange.Columns.Count)).Rows.Interior.ColorIndex = xlNone
+      srw.Range(srw.Cells(r_to, 1), srw.Cells(srw.UsedRange.Rows.Count, srw.UsedRange.Columns.Count)).Rows.ClearComments
+      For x = 1 To Total
+          Application.StatusBar = &quot;Please Wait...Importing Scenario &quot; &amp; x &amp; &quot; of &quot; &amp; Total &amp; &quot; from &quot; &amp; import
+          No_IPL_Entered = False
+          Not_Credible = False
+          Scenario_Eliminated = False
+          Skip_Scenario = False
+          changed = 0
+          If srwi.Cells(R, srwi.Range(&quot;Out_LPR&quot;).Column).Value = srwi.Cells(R, srwi.Range(&quot;Out_Gap&quot;).Column).Value Then
+              No_IPL_Entered = True
+          End If
+          If Not srwi.Cells(R, srwi.Range(&quot;Out_Credible&quot;).Column).Value = &quot;Yes&quot; Then
+              Not_Credible = True
+          End If
+          If srwi.Cells(R, srwi.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Eliminated&quot; Then
+              Scenario_Eliminated = True
+          End If
+          If (No_IPL_Entered Or Not_Credible) And Scenario_Eliminated Then
+              Skip_Scenario = True
+          End If
+          If Skip_Scenario = False Then
+              new_scenario = False
+              merge_scenario = False
+              Duplicate_Found = False
+              Duplicate_Scenario_No = &quot;&quot;
+              flag_ie_desc = False
+              flag_scenario_equip_tag = False
+              If Len(srwi.Cells(R, srwi.Range(&quot;Out_Cause_Desc&quot;).Column).Value) &gt; 256 Then
+                new_scenario = True
+                flag_ie_desc = True
+                Else
+                If Len(srwi.Cells(R, srwi.Range(&quot;Out_Equip_Tag&quot;).Column).Value) &gt; 256 Then
+                    new_scenario = True
+                    flag_scenario_equip_tag = True
+                    Else
+                    lastrow = srw.UsedRange.Rows.Count
+                    filt = srw.AutoFilter.Range.Address
+                    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Equip_Tag&quot;).Column, Criteria1:=srwi.Cells(R, srwi.Range(&quot;Out_Equip_Tag&quot;).Column).Value
+                    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Scenario_Type&quot;).Column, Criteria1:=srwi.Cells(R, srwi.Range(&quot;Out_Scenario_Type&quot;).Column).Value
+                    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Cause&quot;).Column, Criteria1:=srwi.Cells(R, srwi.Range(&quot;Out_Cause&quot;).Column).Value
+                    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Incident&quot;).Column, Criteria1:=srwi.Cells(R, srwi.Range(&quot;Out_Incident&quot;).Column).Value
+                    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Outcome&quot;).Column, Criteria1:=srwi.Cells(R, srwi.Range(&quot;Out_Outcome&quot;).Column).Value
+                    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Cause_Desc&quot;).Column, Criteria1:=srwi.Cells(R, srwi.Range(&quot;Out_Cause_Desc&quot;).Column).Value
+                    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Cause_Sensor&quot;).Column, Criteria1:=srwi.Cells(R, srwi.Range(&quot;Out_Cause_Sensor&quot;).Column).Value
+                    srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Cause_FinalElement&quot;).Column, Criteria1:=srwi.Cells(R, srwi.Range(&quot;Out_Cause_FinalElement&quot;).Column).Value
+                    r_scenario = srw.Range(&quot;Out_Scenario_No&quot;).End(xlDown).Row
+                    If r_scenario &gt; lastrow Then
+                        new_scenario = True
+                    Else
+                        r_to = r_scenario
+                        If srw.Cells(r_scenario, srw.Range(&quot;Out_Scenario_No&quot;).Column).Interior.ColorIndex = xlNone Then
+                            merge_scenario = True
+                        Else
+                            Duplicate_Found = True
+                            Duplicate_Scenario_No = srw.Cells(r_scenario, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value
+                            merge_scenario = True
+                        End If
+                    End If
+                End If
+              End If
+              On Error Resume Next
+              If srw.FilterMode = True Then
+                  filt = srw.AutoFilter.Range.Address
+                  srw.Range(filt).AutoFilter
+                  srw.Range(filt).AutoFilter
+              End If
+              On Error GoTo General_Error
+              If new_scenario = True Then
+                  srw.Range(&quot;Out_Scenario_No&quot;).Offset(2, 0).EntireRow.Insert
+                  r_to = srw.Range(&quot;Out_Scenario_No&quot;).Offset(2, 0).Row
+                  Scenario_ID = Int(Application.WorksheetFunction.Max(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column))) + 1.01
+                  srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).AddComment.Text &quot;Created new scenario, was scenario &quot; &amp; srwi.Cells(R, srwi.Range(&quot;Out_Scenario_No&quot;).Column).Value &amp; &quot; in &quot; &amp; import
+                  srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Comment.Shape.TextFrame.AutoSize = True
+                  srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Interior.ColorIndex = 4
+              Else
+                  Scenario_ID = srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value
+              End If
+              For Each input_name In ThisWorkbook.Names
+                  worksheet_ref = Left(input_name.RefersTo, 20)
+                  If worksheet_ref = &quot;=&apos;Scenario Results&apos;!&quot; And InStr(1, input_name.Name, &quot;FilterDatabase&quot;, vbTextCompare) = 0 And InStr(1, input_name.Name, &quot;Extract&quot;, vbTextCompare) = 0 And Left(input_name.Name, 4) = &quot;Out_&quot; Then
+                      Select Case input_name.Name
+                      Case &quot;Out_Scenario_No&quot;
+                              srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Value = Scenario_ID
+                      Case &quot;Out_Release_Calcs&quot;
+                      &apos; Intentially left blank so this name is skipped, individual release calcs have individual heading names.
+                      Case &quot;Out_TF_Used&quot;
+                          srw.Cells(r_to, srw.Range(&quot;Out_TF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,0,&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+                      Case &quot;Out_PI_Used&quot;
+                          srw.Cells(r_to, srw.Range(&quot;Out_PI_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,0,&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+                      Case &quot;Out_TEF_Used&quot;
+                          srw.Cells(r_to, srw.Range(&quot;Out_TEF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,0,&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+                      Case &quot;Out_LPR&quot;
+                          srw.Cells(r_to, srw.Range(&quot;Out_LPR&quot;).Column).Formula = &quot;=&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_TF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                              &quot;-SUM(&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                              &quot;,&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_PI_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                              &quot;,&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_TEF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                              &quot;,&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_POE&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+                      Case &quot;Out_New_IPL&quot;
+                          new_ipl_formula = &quot;&quot;
+                          new_ipl_formula = &quot;COUNTIF(&quot;
+                          new_ipl_formula = new_ipl_formula &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+                          new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+                          new_ipl_formula = new_ipl_formula &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+                          new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;Proposed&quot;&quot;)+COUNTIF(&quot;
+                          new_ipl_formula = new_ipl_formula &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+                          new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+                          new_ipl_formula = new_ipl_formula &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+                          new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;In Progress&quot;&quot;)&quot;
+                          srw.Cells(r_to, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+                          srw.Cells(r_to, srw.Range(&quot;Out_New_IPL&quot;).Column).Formula = &quot;=&quot; &amp; new_ipl_formula
+                          srw.Cells(r_to, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+                      Case &quot;Out_Gap&quot;
+                          ipl_formula = &quot;&quot;
+                          For IPL = 1 To 8
+                              ipl_formula = ipl_formula &amp; &quot;-&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; IPL).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+                          Next IPL
+                          srw.Cells(r_to, srw.Range(&quot;Out_Gap&quot;).Column).NumberFormat = &quot;General&quot;
+                          srw.Cells(r_to, srw.Range(&quot;Out_Gap&quot;).Column).Formula = &quot;=&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_LPR&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; ipl_formula
+                          srw.Cells(r_to, srw.Range(&quot;Out_Gap&quot;).Column).NumberFormat = &quot;General&quot;
+                      Case &quot;Out_LS_Inst_Credits&quot;
+                          srw.Cells(r_to, srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column).Formula = &quot;=&quot; &amp; _
+                              srw.Cells(r_to, srw.Range(&quot;Out_IPL_1&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                              &quot;+&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL_2&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                              &quot;+&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL_3&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                              &quot;+&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL_4&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+                      Case Else
+                          On Error Resume Next
+                          If srwi.Cells(R, srwi.Range(input_name.Name).Column).HasFormula = True Then
+                              srw.Cells(r_to, srw.Range(input_name.Name).Column).Formula = srwi.Cells(R, srwi.Range(input_name.Name).Column).Formula
+                              Else
+                              If new_scenario = False Then
+                                  If Not srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value Then
+                                      srw.Cells(r_to, srw.Range(input_name.Name).Column).AddComment.Text &quot;Old Value: &quot; &amp; srw.Cells(r_to, srw.Range(input_name.Name).Column).Text
+                                      srw.Cells(r_to, srw.Range(input_name.Name).Column).Interior.ColorIndex = 35
+                                      changed = changed + 1
+                                  End If
+                              End If
+                              srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+                          End If
+                          On Error GoTo General_Error
+                      End Select
+                  End If
+              Next input_name
+              On Error Resume Next
+              If merge_scenario = True Then
+                  If changed &gt; 0 Then
+                    srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).AddComment.Text &quot;Existing scenario overwritten with scenario &quot; &amp; srwi.Cells(R, srwi.Range(&quot;Out_Scenario_No&quot;).Column).Value &amp; &quot; from &quot; &amp; import
+                    srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Comment.Shape.TextFrame.AutoSize = True
+                    srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Interior.ColorIndex = 6
+                    Else
+                    srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Interior.ColorIndex = xlNone
+                  End If
+              End If
+              If Duplicate_Found = True Then
+                  srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).ClearComments
+                  srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).AddComment.Text &quot;Scenario &quot; &amp; srwi.Cells(R, srwi.Range(&quot;Out_Scenario_No&quot;).Column).Value &amp; &quot; from &quot; &amp; import &amp; &quot; appears to be duplicate of scenario &quot; &amp; Duplicate_Scenario_No &amp; Chr(10) &amp; &quot;Verify if needed and manually delete if otherwise.&quot;
+                  srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Comment.Shape.TextFrame.AutoSize = True
+                  srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Interior.ColorIndex = 3
+              End If
+              If new_scenario = True And flag_ie_desc = True Then
+                  srw.Cells(r_to, srw.Range(&quot;Out_Cause_Desc&quot;).Column).AddComment.Text &quot;Long initiating event description prevented merging, scenario treated as new.  Reduce text to less than 256 characters.&quot;
+                  srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Comment.Shape.TextFrame.AutoSize = True
+                  srw.Cells(r_to, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Interior.ColorIndex = 3
+              End If
+              If new_scenario = True And flag_scenario_equip_tag = True Then
+                  srw.Cells(r_to, srw.Range(&quot;Out_Cause_Desc&quot;).Column).AddComment.Text &quot;Long equipment tag prevented merging.  Reduce number of characters to not exceed 40.&quot;
+                  srw.Cells(r_to, srw.Range(&quot;Out_Scenario_No&quot;).Column).Comment.Shape.TextFrame.AutoSize = True
+                  srw.Cells(r_to, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Interior.ColorIndex = 3
+              End If
+              r_to = r_to + 1
+          End If
+          R = R + 1
+      Next x
+      Sort_Scenario_Results
+      
+        R = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) + srw.Range(&quot;Out_Scenario_No&quot;).Row - 2
+        c = srw.UsedRange.Columns.Count
+&apos;        c = srw.Range(&quot;Out_New_Hazard&quot;).Column
+        If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row + 1 Then
+            With srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, 1), srw.Cells(R, c))
+                .Borders(xlEdgeLeft).LineStyle = xlContinuous
+                .Borders(xlEdgeTop).LineStyle = xlContinuous
+                .Borders(xlEdgeBottom).LineStyle = xlContinuous
+                .Borders(xlEdgeRight).LineStyle = xlContinuous
+                .Borders(xlInsideVertical).LineStyle = xlContinuous
+                If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+                    .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+                End If
+            End With
+            For Each calc In srw.Range(&quot;Out_Release_Calcs&quot;)
+                If UCase(Right(calc.Offset(0, 1).Name.Name, 5)) = &quot;UNITS&quot; Then
+                    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).Borders(xlEdgeRight).LineStyle = xlNone
+                    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).HorizontalAlignment = xlRight
+                    srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column + 1), srw.Cells(R, calc.Column + 1)).HorizontalAlignment = xlLeft
+                End If
+            Next calc
+            With srw.Range(srw.Range(&quot;Out_Credible&quot;).Offset(1, 0), srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column)).Validation
+                .Delete
+                .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
+                xlBetween, Formula1:=&quot;Yes,No&quot;
+                .IgnoreBlank = True
+                .InCellDropdown = True
+                .InputTitle = &quot;&quot;
+                .ErrorTitle = &quot;&quot;
+                .InputMessage = &quot;&quot;
+                .ErrorMessage = &quot;&quot;
+                .ShowInput = True
+                .ShowError = True
+            End With
+        End If
+  End Select
+    Next s
+    Application.StatusBar = &quot;Please Wait...Importing Complete, Tidying Things Up&quot;
+    Workbooks(import).Close savechanges:=False
+    Application.EnableEvents = True
+    ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Activate
+    r1 = etw.Range(&quot;T_Equipment_Tag&quot;).Offset(1, 0).Row
+    R2 = etw.UsedRange.Rows.Count
+    If R2 &gt; r1 Then
+        etw.Range(etw.Cells(r1, 1), etw.Cells(R2, 1)).EntireRow.WrapText = False
+    End If
+    Application.GoTo reference:=Range(&quot;T_Equipment_Tag&quot;).Offset(1, 0), scroll:=True
+    If equip_tag_too_long = True Then
+        MsgBox &quot;One or several equipment tags exceed 256 characters.  Those equipment not merged.&quot;
+    End If
+End If
+    
+ThisWorkbook.Check_for_Orphans
+
+macrorunning = False
+Application.Calculation = xlCalculationAutomatic
+Application.StatusBar = False
+Application.ScreenUpdating = True
+Exit Sub
+    
+&apos; Error Opening File
+Opening_File_Undefined_Error:
+MsgBox &quot;Error opening file.  Check that file is not already opened.&quot;
+
+Opening_File_Error:
+macrorunning = False
+Application.StatusBar = False
+Application.Calculation = xlCalculationAutomatic
+Application.ScreenUpdating = True
+End
+    
+&apos; General Error Handling
+General_Error:
+Application.Calculation = xlCalculationAutomatic
+Application.ScreenUpdating = True
+macrorunning = False
+calculate_only_running = False
+MsgBox &quot;Error importing data from file, execution terminated with incomplete results.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Write down the following and contact tool SME for troubleshooting.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Macro: Import_RAST&quot; &amp; Chr(13) &amp; &quot;Error Number: &quot; &amp; Err.Number &amp; Chr(13) &amp; &quot;Error Description: &quot; &amp; Err.Description &amp; Chr(13) &amp; &quot;Error Source: &quot; &amp; Err.Source &amp; Chr(13) &amp; &quot;Error Line: &quot; &amp; Erl
+End
+
+End Sub
+Sub Import_RAST()
+      Dim cpw As Object, etw As Object, srw As Object, cpwi As Object, etwi As Object, srwi As Object, lwi As Object
+      Dim Auto_Valve_Changed As Boolean, R As Integer, x As Integer, r_to As Integer, new_ipl_formula As String
+      Dim sheet As Object, filetoopen As Variant, import As String, s As Object, Total As Integer, Chem_Name As String
+      Dim filt As Range, r1 As Integer, R2 As Integer, equip_tag As String, input_name As Object, last As Integer
+      Dim worksheet_ref As String, ipl_formula As String, IPL As Integer, Init_Event_Factor As Integer, changed_incident As Integer
+      Dim y As Integer, c As Integer
+10      Application.ScreenUpdating = False
+20      Application.EnableEvents = False
+30      For Each sheet In ThisWorkbook.Worksheets
+40          sheet.DisplayPageBreaks = False
+50      Next sheet
+60      Application.Calculation = xlCalculationManual
+70      On Error GoTo General_Error
+80      macrorunning = True
+90      Set cpw = ThisWorkbook.Worksheets(&quot;Chemical Properties&quot;)
+100       Set etw = ThisWorkbook.Worksheets(&quot;Equipment Table&quot;)
+110       Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+120       Set wnw = ThisWorkbook.Worksheets(&quot;Workbook Notes&quot;)
+130       Set spw = ThisWorkbook.Worksheets(&quot;Study Parameters&quot;)
+131       If etw.UsedRange.Rows.Count &gt; etw.Range(&quot;T_Equipment_Tag&quot;).Row Then
+132           MsgBox &quot;Equipment Table appears to have information.  Importing should only be executed into an empty workbook.  Use &quot;&quot;Clear Equipment Table&quot;&quot; button to delete equipment tags or use &quot;&quot;Merge Data from Another File&quot;&quot; button if attempting to merge.&quot;
+133           GoTo Opening_File_Error
+134       End If
+135       If srw.UsedRange.Rows.Count &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+136           MsgBox &quot;Scenario Results appears to have information.  Importing should only be executed into an empty workbook.  Use &quot;&quot;Clear Results&quot;&quot; button to delete scenarios or use &quot;&quot;Merge Data from Another File&quot;&quot; button if attempting to merge.&quot;
+137           GoTo Opening_File_Error
+138       End If
+140       filetoopen = Application.GetOpenFilename(Title:=&quot;Select File to be Imported&quot;, MultiSelect:=False)
+150       If UCase(Right(filetoopen, 4)) &lt;&gt; &quot;XLSM&quot; And Right(filetoopen, 3) &lt;&gt; &quot;xls&quot; Then
+160           MsgBox &quot;File selected is not *.xlsm format. Please re-import and select proper file type.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Note: Old copies of tool must be saved as an Excel Macro-Enabled Workbook (*.xlsm) file first before importing.&quot;
+170           GoTo Opening_File_Error
+180       End If
+190       If filetoopen &lt;&gt; False Then
+200           On Error GoTo Opening_File_Undefined_Error
+210           Application.EnableEvents = False
+220           Workbooks.Open Filename:=filetoopen, UpdateLinks:=0
+230           On Error GoTo General_Error
+240           import = ActiveWorkbook.Name
+250           Set cpwi = Workbooks(import).Worksheets(&quot;Chemical Properties&quot;)
+260           Set etwi = Workbooks(import).Worksheets(&quot;Equipment Table&quot;)
+270           Set srwi = Workbooks(import).Worksheets(&quot;Scenario Results&quot;)
+280           Set lwi = Workbooks(import).Worksheets(&quot;LOPA Worksheet&quot;)
+290           If srwi.Visible = False Then
+300               Application.StatusBar = &quot;Please Wait...Preparing &quot; &amp; import &amp; &quot; for importing&quot;
+310               If lwi.Visible = True And Not lwi.Range(&quot;LOPA_Case_No&quot;).Offset(1, 0).Value = &quot;&quot; Then
+320                   Application.Run &quot;&apos;&quot; &amp; import &amp; &quot;&apos;!Write_LOPA_Back&quot;
+330               End If
+340           End If
+350           Application.ScreenUpdating = False
+360           Application.EnableEvents = False
+370           Application.Calculation = xlCalculationManual
+380           macrorunning = True
+390           Application.StatusBar = &quot;Please Wait...Importing data from &quot; &amp; import
+400           Auto_Valve_Changed = False
+
+410           On Error Resume Next
+420           wnw.Range(&quot;Workbook_Review&quot;).Value = Workbooks(import).Worksheets(&quot;Workbook Notes&quot;).Range(&quot;Workbook_Review&quot;).Value
+430           wnw.Range(&quot;Workbook_Review_Date&quot;).Value = Workbooks(import).Worksheets(&quot;Workbook Notes&quot;).Range(&quot;Workbook_Review_Date&quot;).Value
+440           wnw.Range(&quot;Workbook_Comments&quot;).Value = Workbooks(import).Worksheets(&quot;Workbook Notes&quot;).Range(&quot;Workbook_Comments&quot;).Value
+441           ThisWorkbook.Worksheets(&quot;Study Parameters&quot;).Range(&quot;SP_Notes&quot;).Value = Workbooks(import).Worksheets(&quot;Study Paramters&quot;).Range(&quot;SP_Notes&quot;).Value
+442           ThisWorkbook.Worksheets(&quot;IPL Credits&quot;).Range(&quot;IPL_Notes&quot;).Value = Workbooks(import).Worksheets(&quot;IPL Credits&quot;).Range(&quot;IPL_Notes&quot;).Value
+450           On Error GoTo General_Error
+
+460           For Each s In Workbooks(import).Worksheets
+470               Select Case s.Name
+              Case &quot;Chemical Properties&quot;
+480                   Application.StatusBar = &quot;Please Wait...Importing User Chemicals from &quot; &amp; import
+490                   cpw.Unprotect
+500                   Total = cpwi.UsedRange.Rows.Count - cpwi.Range(&quot;Chemical_C&quot;).Row
+510                   R = cpwi.Range(&quot;Chemical_C&quot;).Row + 1
+520                   For x = 1 To Total
+530                       Chem_Name = cpwi.Cells(R, cpwi.Range(&quot;Chemical_C&quot;).Column).Text
+540                       If cpwi.Cells(R, cpwi.Range(&quot;Prop_Source_C&quot;).Column).Text = &quot;User&quot; Then
+550                           If cpw.Columns(cpw.Range(&quot;Chemical_C&quot;).Column).Find(What:=Chem_Name, After:=cpw.Range(&quot;Chemical_C&quot;), LookIn:=xlFormulas, lookat:=xlWhole, MatchCase:=False) Is Nothing Then
+560                               cpw.Range(&quot;a3&quot;).EntireRow.Insert
+570                               r_to = 3
+580                           Else
+590                               r_to = cpw.Columns(cpw.Range(&quot;Chemical_C&quot;).Column).Find(What:=Chem_Name, After:=cpw.Range(&quot;Chemical_C&quot;), LookIn:=xlFormulas, lookat:=xlWhole, MatchCase:=False).Row
+600                           End If
+610                           On Error Resume Next
+620                           With cpw
+630                               .Cells(r_to, .Range(&quot;Chemical_C&quot;).Column).Value = Chem_Name
+640                               .Cells(r_to, .Range(&quot;Cas_No_C&quot;).colume).Value = cpwi.Cells(R, cpwi.Range(&quot;Cas_No_C&quot;).Column).Value
+650                               .Cells(r_to, .Range(&quot;Prop_Source_C&quot;).Column).Value = &quot;User&quot;
+660                               .Cells(r_to, .Range(&quot;Frac_Key_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Frac_Key_C&quot;).Column).Value
+670                               .Cells(r_to, .Range(&quot;Volatility_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Volatility_C&quot;).Column).Value
+680                               .Cells(r_to, .Range(&quot;Azeotrope_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Azeotrope_C&quot;).Column).Value
+690                               .Cells(r_to, .Range(&quot;NonKey_Mw_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NonKey_Mw_C&quot;).Column).Value
+700                               .Cells(r_to, .Range(&quot;NonKey_ERPG_2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NonKey_ERPG_2_C&quot;).Column).Value
+710                               .Cells(r_to, .Range(&quot;NonKey_ERPG_3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NonKey_ERPG_3_C&quot;).Column).Value
+720                               .Cells(r_to, .Range(&quot;NonKey_LFL_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NonKey_LFL_C&quot;).Column).Value
+730                               .Cells(r_to, .Range(&quot;Mw_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Mw_C&quot;).Column).Value
+740                               .Cells(r_to, .Range(&quot;ERPG2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;ERPG2_C&quot;).Column).Value
+750                               .Cells(r_to, .Range(&quot;ERPG3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;ERPG3_C&quot;).Column).Value
+760                               .Cells(r_to, .Range(&quot;BP_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;BP_C&quot;).Column).Value
+770                               .Cells(r_to, .Range(&quot;MP_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;MP_C&quot;).Column).Value
+780                               .Cells(r_to, .Range(&quot;Dust_Class_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Dust_Class_C&quot;).Column).Value
+790                               .Cells(r_to, .Range(&quot;Dust_Size_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Dust_Size_C&quot;).Column).Value
+800                               .Cells(r_to, .Range(&quot;Fraction_Dust_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Fraction_Dust_C&quot;).Column).Value
+810                               .Cells(r_to, .Range(&quot;Dust_MIE_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Dust_MIE_C&quot;).Column).Value
+820                               .Cells(r_to, .Range(&quot;Dust_Hybrid_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Dust_Hybrid_C&quot;).Column).Value
+830                               .Cells(r_to, .Range(&quot;FP_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;FP_C&quot;).Column).Value
+840                               .Cells(r_to, .Range(&quot;LFL_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LFL_C&quot;).Column).Value
+850                               .Cells(r_to, .Range(&quot;NH_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NH_C&quot;).Column).Value
+860                               .Cells(r_to, .Range(&quot;NF_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NF_C&quot;).Column).Value
+870                               .Cells(r_to, .Range(&quot;NR_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;NR_C&quot;).Column).Value
+880                               .Cells(r_to, .Range(&quot;EI_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;EI_C&quot;).Column).Value
+890                               .Cells(r_to, .Range(&quot;FS_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;FS_C&quot;).Column).Value
+900                               .Cells(r_to, .Range(&quot;DTRS_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;DTRS_C&quot;).Column).Value
+910                               .Cells(r_to, .Range(&quot;ATRS_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;ATRS_C&quot;).Column).Value
+920                               .Cells(r_to, .Range(&quot;Conductive_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Conductive_C&quot;).Column).Value
+930                               .Cells(r_to, .Range(&quot;Warning_Prop_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Warning_Prop_C&quot;).Column).Value
+940                               .Cells(r_to, .Range(&quot;LD_A_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LD_A_C&quot;).Column).Value
+950                               .Cells(r_to, .Range(&quot;LD_B_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LD_B_C&quot;).Column).Value
+960                               .Cells(r_to, .Range(&quot;LCP_A_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LCP_A_C&quot;).Column).Value
+970                               .Cells(r_to, .Range(&quot;LCP_B_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;LCP_B_C&quot;).Column).Value
+980                               .Cells(r_to, .Range(&quot;HV_A_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;HV_A_C&quot;).Column).Value
+990                               .Cells(r_to, .Range(&quot;HV_B_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;HV_B_C&quot;).Column).Value
+1000                                .Cells(r_to, .Range(&quot;HV_C_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;HV_C_C&quot;).Column).Value
+1010                                .Cells(r_to, .Range(&quot;VP_A_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;VP_A_C&quot;).Column).Value
+1020                                .Cells(r_to, .Range(&quot;VP_B_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;VP_B_C&quot;).Column).Value
+1030                                .Cells(r_to, .Range(&quot;VP_C_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;VP_C_C&quot;).Column).Value
+1040                                .Cells(r_to, .Range(&quot;Rx_Data_Reference_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Rx_Data_Reference_C&quot;).Column).Value
+1050                                .Cells(r_to, .Range(&quot;DHR_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;DHR_C&quot;).Column).Value
+1060                                .Cells(r_to, .Range(&quot;Act_Energy_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Act_Energy_C&quot;).Column).Value
+1070                                .Cells(r_to, .Range(&quot;Tdet_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Tdet_C&quot;).Column).Value
+1080                                .Cells(r_to, .Range(&quot;Rdet_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Rdet_C&quot;).Column).Value
+1090                                .Cells(r_to, .Range(&quot;Gas_Gen_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Gas_Gen_C&quot;).Column).Value
+1100                                .Cells(r_to, .Range(&quot;Gas_Exo_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Gas_Exo_C&quot;).Column).Value
+1110                                .Cells(r_to, .Range(&quot;Monomer_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Monomer_C&quot;).Column).Value
+1120                                .Cells(r_to, .Range(&quot;phi_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;phi_C&quot;).Column).Value
+1130                                .Cells(r_to, .Range(&quot;Test_Method_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Test_Method_C&quot;).Column).Value
+1140                                .Cells(r_to, .Range(&quot;Chemical_1_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_1_C&quot;).Column).Value
+1150                                .Cells(r_to, .Range(&quot;Chemical_2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_2_C&quot;).Column).Value
+1160                                .Cells(r_to, .Range(&quot;Chemical_3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_3_C&quot;).Column).Value
+1170                                .Cells(r_to, .Range(&quot;Chemical_4_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_4_C&quot;).Column).Value
+1180                                .Cells(r_to, .Range(&quot;Chemical_5_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;Chemical_5_C&quot;).Column).Value
+1190                                .Cells(r_to, .Range(&quot;WtFract_2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;WtFract_2_C&quot;).Column).Value
+1200                                .Cells(r_to, .Range(&quot;WtFract_3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;WtFract_3_C&quot;).Column).Value
+1210                                .Cells(r_to, .Range(&quot;WtFract_4_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;WtFract_4_C&quot;).Column).Value
+1220                                .Cells(r_to, .Range(&quot;WtFract_5_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;WtFract_5_C&quot;).Column).Value
+1230                                .Cells(r_to, .Range(&quot;SecPhase_1_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhase_1_C&quot;).Column).Value
+1240                                .Cells(r_to, .Range(&quot;SecPhase_2_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhasel_2_C&quot;).Column).Value
+1250                                .Cells(r_to, .Range(&quot;SecPhase_3_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhase_3_C&quot;).Column).Value
+1260                                .Cells(r_to, .Range(&quot;SecPhase_4_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhase_4_C&quot;).Column).Value
+1270                                .Cells(r_to, .Range(&quot;SecPhase_5_C&quot;).Column).Value = cpwi.Cells(R, cpwi.Range(&quot;SecPhase_5_C&quot;).Column).Value
+1280                            End With
+1290                            On Error GoTo General_Error
+1300                        End If
+1310                        R = R + 1
+1320                    Next x
+1330                    cpw.Activate
+1340                    cpw.Range(&quot;Chem_Table&quot;).Offset(1, 0).Sort key1:=Range(&quot;a3&quot;), Order1:=xlAscending, Header:=xlNo
+1350                    cpw.Protect AllowFiltering:=True
+1360                    ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Activate
+
+1370                Case &quot;Equipment Table&quot;
+1380                    Application.StatusBar = &quot;Please Wait...Importing Equipment Table from &quot; &amp; import
+1390                    If etw.FilterMode = True Then
+1400                        filt = etw.AutoFilter.Range.Address
+1410                        etw.Range(filt).AutoFilter
+1420                        etw.Range(filt).AutoFilter
+1430                    End If
+1470                    Total = etwi.UsedRange.Rows.Count - etwi.Range(&quot;T_Equipment_Tag&quot;).Row
+1480                    R = etwi.Range(&quot;T_Equipment_Tag&quot;).Row + 1
+1490                    r_to = etw.Range(&quot;T_Equipment_Tag&quot;).Row + 1
+1500                    For x = 1 To Total
+1510                        equip_tag = etwi.Cells(R, etwi.Range(&quot;T_Equipment_Tag&quot;).Column).Text
+1520                        For Each input_name In ThisWorkbook.Names
+1530                            If Not input_name.Name = &quot;Equipment_Table_Headings&quot; And InStr(1, input_name.RefersTo, &quot;&apos;Equipment Table&apos;!&quot;, vbTextCompare) &gt; 0 Then
+1540                               If input_name.Name = &quot;T_Overflow_Location&quot; Then
+1550                                  If etwi.Cells(R, etwi.Range(input_name.Name).Column).Value = &quot;Does Not Vent&quot; Then
+1560                                      etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = &quot;Does Not Vent to Atmosphere&quot;
+1570                                  Else
+1580                                      etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = etwi.Cells(R, etwi.Range(input_name.Name).Column).Value
+1590                                  End If
+1591                               ElseIf input_name.Name = &quot;T_Screwed_Connect&quot; Then
+1592                                  If etwi.Cells(R, etwi.Range(input_name.Name).Column).Value = &quot;Yes&quot; Then
+1593                                     etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = &quot;Through Extremely Large&quot;
+1594                                  ElseIf etwi.Cells(R, etwi.Range(input_name.Name).Column).Value = &quot;No&quot; Then
+1595                                     etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = &quot;No Penality&quot;
+1596                                  Else
+1597                                     etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = etwi.Cells(R, etwi.Range(input_name.Name).Column).Value
+1598                                  End If
+1600                               ElseIf input_name.Name = &quot;T_Vibration&quot; Then
+1601                                  If etwi.Cells(R, etwi.Range(input_name.Name).Column).Value = &quot;Full Bore&quot; Or etwi.Cells(R, etwi.Range(input_name.Name).Column).Value = &quot;Small&quot; Then
+1602                                     etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = &quot;Yes&quot;
+1603                                  Else
+1604                                     etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = etwi.Cells(R, etwi.Range(input_name.Name).Column).Value
+1605                                  End If
+1606                               ElseIf input_name.Name = &quot;T_Equipment&quot; Then
+1610                                  If etwi.Cells(R, etwi.Range(input_name.Name).Column).Value = &quot;Mill/Grinder-NonFluidized (Solids)&quot; Or etwi.Cells(R, etwi.Range(input_name.Name).Column).Value = &quot;Mill/Grinder-Fluidized (Solids)&quot; Then
+1620                                     etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = &quot;Mill/Grinder (solids)&quot;
+1630                                  ElseIf etwi.Cells(R, etwi.Range(input_name.Name).Column).Value = &quot;Fired Equipment - Vapor Quench&quot; Then
+1640                                     etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = &quot;Vapor Quench&quot;
+1650                                  ElseIf etwi.Cells(R, etwi.Range(input_name.Name).Column).Value = &quot;Compressor/Blower/Turbine&quot; Then
+1660                                     etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = &quot;Compressor or Blower&quot;
+1670                                  Else
+1680                                      etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = etwi.Cells(R, etwi.Range(input_name.Name).Column).Value
+1690                                   End If
+1700                               Else
+1710                                   On Error Resume Next
+1720                                   etw.Cells(r_to, etw.Range(input_name.Name).Column).Value = etwi.Cells(R, etwi.Range(input_name.Name).Column).Value
+1730                                   On Error GoTo General_Error
+1740                               End If
+1750                            End If
+1760                        Next input_name
+1770                        On Error Resume Next
+1780                        Select Case etwi.Cells(R, etwi.Range(&quot;T_LPP_Compliance&quot;).Column).Value
+                                Case &quot;Fully Meets&quot;
+1790                                etw.Cells(r_to, etw.Range(&quot;T_Offset_Factor&quot;).Column).Value = &quot;Standard Offset Factor&quot;
+1800                            Case &quot;Partially Meets&quot;
+1810                                etw.Cells(r_to, etw.Range(&quot;T_Offset_Factor&quot;).Column).Value = &quot;Penalty Equivalent to 1 IPL&quot;
+1820                            Case &quot;Does Not Meet&quot;
+1830                                etw.Cells(r_to, etw.Range(&quot;T_Offset_Factor&quot;).Column).Value = &quot;Penalty Equivalent to 2 IPLs&quot;
+1840                        End Select
+1850                        If etw.Cells(r_to, etw.Range(&quot;T_Pump_Valves&quot;).Column).Value = &quot;Yes&quot; Then
+1860                            etw.Cells(r_to, etw.Range(&quot;T_Pump_Valves&quot;).Column).Value = &quot;Both Suction &amp; Discharge&quot;
+1870                            Auto_Valve_Changed = True
+1880                        End If
+1890                       Select Case etw.Cells(r_to, etw.Range(&quot;T_NonAnchored&quot;).Column).Value
+                             Case &quot;Yes&quot;
+1900                         etw.Cells(r_to, etw.Range(&quot;T_Geometry&quot;).Column).Value = &quot;Non-Anchored Flat Bottom&quot;
+1910                         Case &quot;No&quot;
+1920                         etw.Cells(r_to, etw.Range(&quot;T_Geometry&quot;).Column).Value = &quot;Flat Bottom&quot;
+1930                       End Select
+1940                        etw.Cells(r_to, etw.Range(&quot;P_Rx_Data_Reference&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Rx_Data_Reference&quot;).Column).Value
+1950                        etw.Cells(r_to, etw.Range(&quot;P_DHR&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_DHR&quot;).Column).Value
+1960                        etw.Cells(r_to, etw.Range(&quot;P_Act_Energy&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Act_Energy&quot;).Column).Value
+1970                        etw.Cells(r_to, etw.Range(&quot;P_Tdet&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Tdet&quot;).Column).Value
+1980                        etw.Cells(r_to, etw.Range(&quot;P_Rdet&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Rdet&quot;).Column).Value
+1990                        etw.Cells(r_to, etw.Range(&quot;P_Gas_Gen&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Gas_Gen&quot;).Column).Value
+2000                        etw.Cells(r_to, etw.Range(&quot;P_Gas_Exo&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Gas_Exo&quot;).Column).Value
+2010                        etw.Cells(r_to, etw.Range(&quot;P_phi&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_phi&quot;).Column).Value
+2020                        etw.Cells(r_to, etw.Range(&quot;P_Test_Method&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Test_Method&quot;).Column).Value
+2030                        etw.Cells(r_to, etw.Range(&quot;P_Monomer&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Monomer&quot;).Column).Value
+2040                        etw.Cells(r_to, etw.Range(&quot;T_Temp_1&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Temp1&quot;).Column).Value
+2050                        etw.Cells(r_to, etw.Range(&quot;T_Temp_2&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Temp2&quot;).Column).Value
+2060                        etw.Cells(r_to, etw.Range(&quot;T_VP_1&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_VP1&quot;).Column).Value
+2070                        etw.Cells(r_to, etw.Range(&quot;T_VP_2&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_VP2&quot;).Column).Value
+2080                        etw.Cells(r_to, etw.Range(&quot;T_LD_1&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_LD1&quot;).Column).Value
+2090                        etw.Cells(r_to, etw.Range(&quot;T_LD_2&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_LD2&quot;).Column).Value
+2100                        etw.Cells(r_to, etw.Range(&quot;T_LHC_1&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_LHC1&quot;).Column).Value
+2110                        etw.Cells(r_to, etw.Range(&quot;T_LHC_2&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_LHC2&quot;).Column).Value
+2120                        etw.Cells(r_to, etw.Range(&quot;T_HVAP_1&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_HVAP1&quot;).Column).Value
+2130                        etw.Cells(r_to, etw.Range(&quot;T_HVAP_2&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_HVAP2&quot;).Column).Value
+2140                        etw.Cells(r_to, etw.Range(&quot;T_Coolant_Temp_Input&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Coolant_Temp&quot;).Column).Value
+2150                        etw.Cells(r_to, etw.Range(&quot;T_Coolant_Area_Input&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Coolant_Area&quot;).Column).Value
+2160                        etw.Cells(r_to, etw.Range(&quot;T_Coolant_U_Input&quot;).Column).Value = etwi.Cells(R, etwi.Range(&quot;T_Coolant_U&quot;).Column).Value
+2170                        On Error GoTo General_Error
+2180                        R = R + 1
+2190                        r_to = r_to + 1
+2200                    Next x
+
+2210                    R = Application.WorksheetFunction.CountA(etw.Columns(etw.Range(&quot;T_Equipment_Tag&quot;).Column))
+2220                    c = etw.Range(&quot;Equipment_Table_Headings&quot;).Columns(etw.Range(&quot;Equipment_Table_Headings&quot;).Columns.Count).Column
+2230                    If R &gt; etw.Range(&quot;Equipment_Table_Headings&quot;).Row Then
+2240                        With etw.Range(etw.Range(&quot;Equipment_Table_Headings&quot;), etw.Cells(R, c))
+2250                            .Borders(xlEdgeLeft).LineStyle = xlContinuous
+2260                            .Borders(xlEdgeTop).LineStyle = xlContinuous
+2270                            .Borders(xlEdgeBottom).LineStyle = xlContinuous
+2280                            .Borders(xlEdgeRight).LineStyle = xlContinuous
+2290                            .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+2300                            .Borders(xlInsideVertical).LineStyle = xlContinuous
+2310                            .Borders(xlEdgeLeft).Weight = xlThin
+2320                            .Borders(xlEdgeTop).Weight = xlThin
+2330                            .Borders(xlEdgeBottom).Weight = xlThin
+2340                            .Borders(xlEdgeRight).Weight = xlThin
+2350                            .Borders(xlInsideHorizontal).Weight = xlThin
+2360                            .Borders(xlInsideVertical).Weight = xlThin
+2370                        End With
+2380                        With etw.Range(&quot;Equipment_Table_Headings&quot;)
+2390                            .Borders(xlEdgeLeft).Weight = xlMedium
+2400                            .Borders(xlEdgeTop).Weight = xlMedium
+2410                            .Borders(xlEdgeBottom).Weight = xlMedium
+2420                            .Borders(xlEdgeRight).Weight = xlMedium
+2430                        End With
+2440                    End If
+2450                Case &quot;Scenario Results&quot;
+2460                    Application.StatusBar = &quot;Please Wait...Importing Scenario Results from &quot; &amp; import
+2470                    If srw.FilterMode = True Then
+2480                        filt = srw.AutoFilter.Range.Address
+2490                        srw.Range(filt).AutoFilter
+2500                        srw.Range(filt).AutoFilter
+2510                    End If
+2520                    last = srw.UsedRange.Rows.Count
+2560                    Total = srwi.UsedRange.Rows.Count - srwi.Range(&quot;Out_Scenario_No&quot;).Row
+2570                    R = srwi.Range(&quot;Out_Scenario_No&quot;).Row + 1
+2580                    r_to = srw.Range(&quot;Out_Scenario_No&quot;).Row + 1
+2590                    For x = 1 To Total
+2600                        If x = 1 Then
+2610                            Application.StatusBar = &quot;Please Wait...Importing &quot; &amp; Total &amp; &quot; Scenarios from &quot; &amp; import
+2620                        ElseIf Right(x, 2) = &quot;00&quot; Then
+2630                            Application.StatusBar = &quot;Please Wait...Importing Scenario &quot; &amp; x &amp; &quot; of &quot; &amp; Total &amp; &quot; from &quot; &amp; import
+2640                        End If
+2650                        If Not (srwi.Cells(R, srwi.Range(&quot;Out_Compare&quot;).Column).Value = &quot;Eliminated&quot; And srwi.Cells(R, srwi.Range(&quot;Out_Credible&quot;).Column).Value = &quot;No&quot;) And Not srwi.Cells(R, srwi.Range(&quot;Out_Scenario_No&quot;).Column).Value = &quot;&quot; Then
+2660                            relief_blanked = False
+2670                            For Each input_name In ThisWorkbook.Names
+2680                                worksheet_ref = Left(input_name.RefersTo, 20)
+2690                                If worksheet_ref = &quot;=&apos;Scenario Results&apos;!&quot; And InStr(1, input_name.Name, &quot;FilterDatabase&quot;, vbTextCompare) = 0 And InStr(1, input_name.Name, &quot;Extract&quot;, vbTextCompare) = 0 And Left(input_name.Name, 4) = &quot;Out_&quot; Then
+2700                                Select Case input_name.Name
+                                  Case &quot;Out_Release_Calcs&quot;
+                                      &apos; Intentially left blank so this name is skipped, individual release calcs have individual heading names.
+2710                                    Case &quot;Out_POE_Desc&quot;
+2720                                        Select Case srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+                                          Case &quot;Time at Risk Not Allowed&quot;
+2730                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;None&quot;
+2740                                            Case &quot;Prob of Exp = 2 (User Override)&quot;, &quot;Prob of Exp = 3 (User Override)&quot;
+2750                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;USER DEFINED Enabling Factor = 2&quot;
+2760                                            Case &quot;Prob of Exp = 1 (User Override)&quot;
+2770                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;USER DEFINED Enabling Factor = 1&quot;
+2780                                            Case &quot;Prob of Exp = 0 (User Override)&quot;
+2790                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;USER DEFINED Enabling Factor = 0&quot;
+2800                                            Case &quot;Prob of Exp = -1 (User Override)&quot;
+2810                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;USER DEFINED Enabling Factor = -1&quot;
+2820                                            Case Else
+2830                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+2840                                        End Select
+2850                                    Case &quot;Out_POE&quot;
+                                        &apos; Value for POE specifically set since older versions used a lookup formula for POE that no longer applies.
+2860                                          srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+2870                                    Case &quot;Out_TF_Used&quot;
+2880                                        srw.Cells(r_to, srw.Range(&quot;Out_TF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,0,&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_TF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_ATF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+2890                                    Case &quot;Out_PI_Used&quot;
+2900                                        srw.Cells(r_to, srw.Range(&quot;Out_PI_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,0,&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_PI&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_API&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+2910                                    Case &quot;Out_TEF_Used&quot;
+2920                                        srw.Cells(r_to, srw.Range(&quot;Out_TEF_Used&quot;).Column).Formula = &quot;=IF(ISBLANK(&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),IF(&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;=&quot;&quot;&quot;&quot;,0,&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_TEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;),&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_ATEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+2930                                    Case &quot;Out_LPR&quot;
+2940                                        srw.Cells(r_to, srw.Range(&quot;Out_LPR&quot;).Column).Formula = &quot;=&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_TF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                          &quot;-SUM(&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IEF&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                          &quot;,&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_PI_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                          &quot;,&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_TEF_Used&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                          &quot;,&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_POE&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; &quot;)&quot;
+2950                                    Case &quot;Out_New_IPL&quot;
+2960                                        new_ipl_formula = vbNullString
+2970                                        new_ipl_formula = &quot;COUNTIF(&quot;
+2980                                        new_ipl_formula = new_ipl_formula &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+2990                                        new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+3000                                        new_ipl_formula = new_ipl_formula &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+3010                                        new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;Proposed&quot;&quot;)+COUNTIF(&quot;
+3020                                        new_ipl_formula = new_ipl_formula &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL1_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+3030                                        new_ipl_formula = new_ipl_formula &amp; &quot;:&quot;
+3040                                        new_ipl_formula = new_ipl_formula &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL8_Status&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+3050                                        new_ipl_formula = new_ipl_formula &amp; &quot;,&quot;&quot;In Progress&quot;&quot;)&quot;
+3060                                        srw.Cells(r_to, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+3070                                        srw.Cells(r_to, srw.Range(&quot;Out_New_IPL&quot;).Column).Formula = &quot;=&quot; &amp; new_ipl_formula
+3080                                        srw.Cells(r_to, srw.Range(&quot;Out_New_IPL&quot;).Column).NumberFormat = &quot;General&quot;
+3090                                    Case &quot;Out_Gap&quot;
+3100                                        ipl_formula = vbNullString
+3110                                        For IPL = 1 To 8
+3120                                            ipl_formula = ipl_formula &amp; &quot;-&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; IPL).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+3130                                        Next IPL
+3140                                        srw.Cells(r_to, srw.Range(&quot;Out_Gap&quot;).Column).NumberFormat = &quot;General&quot;
+3150                                        srw.Cells(r_to, srw.Range(&quot;Out_Gap&quot;).Column).Formula = &quot;=&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_LPR&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; ipl_formula
+3160                                        srw.Cells(r_to, srw.Range(&quot;Out_Gap&quot;).Column).NumberFormat = &quot;General&quot;
+3170                                    Case &quot;Out_LS_Inst_Credits&quot;
+3180                                        srw.Cells(r_to, srw.Range(&quot;Out_LS_Inst_Credits&quot;).Column).Formula = &quot;=&quot; &amp; _
+                                          srw.Cells(r_to, srw.Range(&quot;Out_IPL_1&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                          &quot;+&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL_2&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                          &quot;+&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL_3&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False) &amp; _
+                                          &quot;+&quot; &amp; srw.Cells(r_to, srw.Range(&quot;Out_IPL_4&quot;).Column).Address(RowAbsolute:=False, ColumnAbsolute:=False)
+3190                                    Case &quot;Out_Cause&quot;, &quot;Out_Cause_Tool&quot;
+3200                                        If Left(srwi.Range(&quot;Version&quot;).Value, 1) &lt; 4 And input_name.Name = &quot;Out_Cause_Tool&quot; Then
+                                          &apos; intentionally left blank
+3210                                            Else
+3220                                            Init_Event_Factor = Trim(Str(Int(srwi.Cells(R, srwi.Range(&quot;Out_IEF&quot;).Column).Value)))
+3230                                            Select Case Init_Event_Factor
+                                                Case Is &lt; 0
+3240                                                   Init_Event_Factor = 0
+3250                                               Case Is &gt; 6
+3260                                                  Init_Event_Factor = 6
+3270                                            End Select
+3280                                            If InStr(1, srwi.Cells(R, srwi.Range(input_name.Name).Column).Value, &quot;Pool Fire&quot;, vbTextCompare) &gt; 0 Or _
+                                                    InStr(1, srwi.Cells(R, srwi.Range(input_name.Name).Column).Value, &quot;Mechanical Integrity&quot;, vbTextCompare) &gt; 0 Or _
+                                                    InStr(1, srwi.Cells(R, srwi.Range(input_name.Name).Column).Value, &quot;Relief Device Failure&quot;, vbTextCompare) &gt; 0 Or _
+                                                    (InStr(1, srwi.Cells(R, srwi.Range(input_name.Name).Column).Value, &quot;USER DEFINED&quot;, vbTextCompare) &gt; 0 And srwi.Cells(R, srwi.Range(&quot;Out_Source&quot;).Column).Value = &quot;User&quot;) Then
+3290                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;IEF=&quot; &amp; Init_Event_Factor &amp; &quot; pending more detailed evaluation&quot;
+3300                                                Else
+3310                                                Select Case srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+                                                  Case &quot;BPCS Failure&quot;
+3320                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;BPCS Instrument Loop Failure&quot;
+3330                                                    Case &quot;BPCS with Mechanical Failure&quot;
+3340                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;BPCS Instrument Loop Failure&quot;
+3350                                                        srw.Cells(r_to, srw.Range(&quot;Out_IEF&quot;).Column).Value = 1
+3360                                                        srwi.Cells(R, srwi.Range(&quot;Out_IEF&quot;).Column).Value = 1
+3370                                                    Case &quot;BPCS Failure + Head Space Ignition&quot;
+3380                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;BPCS Instrument Loop Failure&quot;
+3390                                                    Case &quot;Operator Action Failure&quot;
+3400                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Human Failure Action more than once per quarter&quot;
+3410                                                    Case &quot;Operator Failure Action more than once per quarter&quot;
+3420                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Human Failure Action more than once per quarter&quot;
+3430                                                    Case &quot;Operator Action Failure &lt; 1/Qtr&quot;
+3440                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Human Failure Action once per quarter or less&quot;
+3450                                                    Case &quot;Operator Failure Action once per quarter or less&quot;
+3460                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Human Failure Action once per quarter or less&quot;
+3470                                                    Case &quot;Infrequent Maintenance + Ignition of Combustible&quot;
+3480                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Human Failure Action more than once per quarter&quot;
+3490                                                    Case &quot;Operator Error + Head Space Ignition&quot;
+3500                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Human Failure Action more than once per quarter&quot;
+3510                                                    Case &quot;Regulator Failure + Head Space Ignition&quot;
+3520                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Regulator Failure&quot;
+3530                                                    Case &quot;Valve Stem Packing Failure&quot;
+3540                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;IEF=&quot; &amp; Trim(Str(Int(srwi.Cells(R, srwi.Range(&quot;Out_IEF&quot;).Column).Value))) &amp; &quot; pending more detailed evaluation&quot;
+3550                                                    Case &quot;Loading Arm Failure&quot;
+3560                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Loading Arm Failure&quot;
+3570                                                    Case &quot;Blower or Damper Failure&quot;
+3580                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Failure&quot;
+3590                                                    Case &quot;Hose Failure&quot;
+3600                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Unloading/Loading Hose Failure&quot;
+3610                                                    Case &quot;Utility Failure (Cooling Water, Electrical, etc.)&quot;
+3620                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;General Utility Failure&quot;
+3630                                                    Case &quot;Distributor, Internals, or Packing Failure&quot;
+3640                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;BPCS Instrument Loop Failure&quot;
+3650                                                    Case &quot;&quot;&quot;Flame Out&quot;&quot; of Burner&quot;
+3660                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;BPCS Instrument Loop Failure&quot;
+3670                                                    Case &quot;Pilot Failure&quot;
+3680                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;BPCS Instrument Loop Failure&quot;
+3690                                                    Case &quot;Ignitor Failure&quot;
+3700                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Failure&quot;
+3710                                                    Case &quot;Inadequate Grounding&quot;
+3720                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Failure&quot;
+3730                                                    Case &quot;Canned Pump Double Containment Failure&quot;
+3740                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Canned/Magnetic Drive Pump Failure&quot;
+3750                                                    Case &quot;Mag Drive or Canned Pump Containment Failure&quot;
+3760                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Canned/Magnetic Drive Pump Failure&quot;
+3770                                                    Case &quot;Generic Mechanical Failure&quot;, &quot;Agitation/Mixing Failure&quot;
+3780                                                        If srwi.Cells(R, srwi.Range(&quot;Out_Scenario_Type&quot;).Column).Value = &quot;Uncontrolled Reaction - Pooling of Reactants&quot; Then
+3790                                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Loss of Mixing or Agitation&quot;
+3800                                                        Else
+3810                                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Failure&quot;
+3820                                                        End If
+3830                                                    Case &quot;Pump Failure&quot;
+3840                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Pump (blower, compressor, etc.) Failure&quot;
+3850                                                    Case &quot;Heat Exchanger Tube Failure&quot;
+3860                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Heat Exchanger Tube Leak &lt; 100 tubes&quot;
+3870                                                        srw.Cells(r_to, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value = &quot;Tube Failure Leak&quot;
+3880                                                        srw.Cells(r_to, srw.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Tube Hole Size Leak (Process)&quot;
+3890                                                    Case Else
+3900                                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+3910                                                End Select
+3920                                            End If
+3930                                        End If
+3940                                    Case &quot;Out_Incident&quot;
+3950                                        changed_incident = 0
+3960                                        If Left(srwi.Cells(R, srwi.Range(input_name.Name).Column).Value, 10) = &quot;Vapor Vent&quot; Or _
+                                          Left(srwi.Cells(R, srwi.Range(input_name.Name).Column).Value, 17) = &quot;Vapor Relief Vent&quot; Or _
+                                          Left(srwi.Cells(R, srwi.Range(input_name.Name).Column).Value, 26) = &quot;Release thru Relief System&quot; Then
+3970                                            Select Case srwi.Cells(R, srwi.Range(&quot;Out_Scenario_Type&quot;).Column).Value
+                                              Case &quot;Excessive Heat Input - Pool Fire Exposure&quot;
+3980                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Relief Vent - Fire&quot;
+3990                                                    changed_incident = 1
+4000                                                Case &quot;Excessive Heat Input - Mechanical&quot;
+4010                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Relief Vent - Mechanical Energy&quot;
+4020                                                    changed_incident = 1
+4030                                                Case &quot;Excessive Heat Input - Heat Transfer&quot;
+4040                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Relief Vent - Heat Transfer&quot;
+4050                                                    changed_incident = 1
+4060                                                Case &quot;Uncontrolled Reaction - Thermal Initiation&quot;
+4070                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Relief Vent - Reaction with External Heat&quot;
+4080                                                    changed_incident = 1
+4090                                                Case &quot;Uncontrolled Reaction - Fire Induced&quot;
+4100                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Relief Vent - Reaction with Fire&quot;
+4110                                                    changed_incident = 1
+4120                                                Case &quot;Uncontrolled Reaction - Catalyst or Impurity&quot;
+4130                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Relief Vent - Reaction with Catalyst&quot;
+4140                                                    changed_incident = 1
+4150                                                Case &quot;Uncontrolled Reaction - Pooling of Reactants&quot;
+4160                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Relief Vent - Reaction with Pooling&quot;
+4170                                                    changed_incident = 1
+4180                                                Case &quot;Uncontrolled Reaction - Mis-Loading&quot;
+4190                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Relief Vent - Reaction with Mis-Loading&quot;
+4200                                                    changed_incident = 1
+4210                                                Case &quot;Uncontrolled Reaction - Adiabatic&quot;
+4220                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Relief Vent - Reaction&quot;
+4230                                                    changed_incident = 1
+4240                                            End Select
+4250                                        End If
+4260                                        If srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Release thru Vent System&quot; Or _
+                                          srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Release thru Relief System&quot; Or _
+                                          srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Inert Release thru Relief System&quot; Then
+4270                                            Select Case srwi.Cells(R, srwi.Range(&quot;Out_Scenario_Type&quot;).Column).Value
+                                              Case &quot;Overfill, Overflow, or Backflow&quot;
+4280                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Overfill Release&quot;
+4290                                                    changed_incident = 1
+4300                                                Case &quot;Overflow - Flooding or Plugging&quot;
+4310                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Overfill Release&quot;
+4320                                                    changed_incident = 1
+4330                                                Case &quot;Pressure Damage&quot;
+4340                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Gasket Failure&quot;
+4350                                                    changed_incident = 1
+4360                                                Case Else
+4370                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vent Release&quot;
+4380                                                    changed_incident = 1
+4390                                            End Select
+4400                                        End If
+4410                                        If srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Equipment Rupture at Operating Conditions&quot; Then
+4420                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Equipment Rupture at Operating Temperature&quot;
+4430                                            changed_incident = 1
+4440                                        End If
+4450                                        If srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Equipment Rupture at Saturation Conditions&quot; Then
+4460                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Equipment Rupture at Saturation Temperature&quot;
+4470                                            changed_incident = 1
+4480                                        End If
+4490                                        If srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Small Hole Size Leak (top of vessel)&quot; Then
+4500                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Gasket Failure above Liquid Level&quot;
+4510                                            changed_incident = 1
+4520                                        End If
+4530                                        If srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Small Hole Size Leak (0.5 inch)&quot; Or _
+                                          srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Gasket or Seal Failure as Small Hole Size Leak (0.5 inch)&quot; Or _
+                                          srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Seal or Gasket Failure as Small Hole Size Leak (0.5 inch)&quot; Or _
+                                          srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Seal or Gasket Failure equivalent to Small Hole Size Leak (0.5 inch)&quot; Or _
+                                          srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Gasket or Seal Failure equivalent to Small Hole Size Leak (0.5 inch)&quot; Then
+4540                                            Select Case srwi.Cells(R, srwi.Range(&quot;Out_Scenario_Type&quot;).Column).Value
+                                              Case &quot;Seal or Casing LOPC&quot;, &quot;Pump Or Compressor Deadhead&quot;
+4550                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Seal Failure&quot;
+4560                                                    changed_incident = 1
+4570                                                Case Else
+4580                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Gasket Failure&quot;
+4590                                                    changed_incident = 1
+4600                                            End Select
+4610                                        End If
+4620                                        If srwi.Cells(R, srwi.Range(&quot;Out_Scenario_Type&quot;).Column).Value = &quot;Drain or Vent Valve Open&quot; Then
+4630                                            If InStr(1, srwi.Cells(R, srwi.Range(input_name.Name).Column).Value, &quot;(top of vessel)&quot;, vbTextCompare) &gt; 0 Then
+4640                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Drain or Vent Leak above Liquid Level&quot;
+4650                                                changed_incident = 1
+4660                                                Else
+4670                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Drain or Vent Leak&quot;
+4680                                                changed_incident = 1
+4690                                            End If
+4700                                        End If
+4710                                       Select Case srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+                                          Case &quot;Very Small Hole Size Leak (5 mm)&quot;
+4720                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Very Small Hole Size Leak&quot;
+4730                                               changed_incident = 1
+4740                                           Case &quot;Seal Failure as Small Hole Size Leak (0.5 inch)&quot;
+4750                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Seal Failure&quot;
+4760                                               changed_incident = 1
+4770                                           Case &quot;Gasket Failure as Small Hole Size Leak (0.5 inch)&quot;
+4780                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Gasket Failure&quot;
+4790                                               changed_incident = 1
+4800                                           Case &quot;Gasket or Seal Failure as Small Hole Size Leak (top of vessel)&quot;
+4810                                               If srwi.Cells(R, srwi.Range(&quot;Out_Scenario_Type&quot;).Column).Value = &quot;Seal or Casing LOPC&quot; Then
+4820                                                  srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Seal Failure above Liquid Level&quot;
+4830                                              Else
+4840                                                  srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Gasket Failure above Liquid Level&quot;
+4850                                               End If
+4860                                              changed_incident = 1
+4870                                           Case &quot;Drain or Vent Hole Size&quot;
+4880                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Drain or Vent Leak&quot;
+4890                                               changed_incident = 1
+4900                                           Case &quot;Drain or Vent Hole Size (top of vessel)&quot;
+4910                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Drain or Vent Leak above Liquid Level&quot;
+4920                                               changed_incident = 1
+4930                                           Case &quot;USER DEFINED HOLE SIZE (top of vessel)&quot;
+4940                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;USER DEFINED HOLE SIZE above Liquid Level&quot;
+4950                                               changed_incident = 1
+4960                                           Case &quot;Medium Hole Size Leak (1 inch)&quot;
+4970                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Medium Hole Size Leak&quot;
+4980                                               changed_incident = 1
+4990                                           Case &quot;Medium Hole Size Leak (top of vessel)&quot;
+5000                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Medium Hole Size Leak above Liquid Level&quot;
+5010                                               changed_incident = 1
+5020                                           Case &quot;Large Hole Size Leak (pipe or nozzle size)&quot;
+5030                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Full Bore Hole Size Leak&quot;
+5040                                               changed_incident = 1
+5050                                           Case &quot;Large Hole Size Leak (top of vessel)&quot;
+5060                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Full Bore Hole Size Leak above Liquid Level&quot;
+5070                                               changed_incident = 1
+5080                                           Case &quot;Very Large Hole Size Leak (100 mm)&quot;
+5090                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Very Large Hole Size Leak&quot;
+5100                                               changed_incident = 1
+5110                                           Case &quot;Very Large Hole Size Leak (top of vessel)&quot;
+5120                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Very Large Hole Size Leak above Liquid Level&quot;
+5130                                               changed_incident = 1
+5140                                           Case &quot;Extremely Large Hole Size Leak (250 mm)&quot;
+5150                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Extremely Large Hole Size Leak&quot;
+5160                                               changed_incident = 1
+5170                                           Case &quot;Extremely Large Hole Size Leak (top of vessel)&quot;
+5180                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Extremely Large Hole Size Leak above Liquid Level&quot;
+5190                                               changed_incident = 1
+5200                                           Case &quot;Relief Size Leak&quot;
+5210                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Relief Size Release&quot;
+5220                                               changed_incident = 1
+5230                                           Case &quot;Relief Size Leak (top of vessel)&quot;
+5240                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Relief Size Release above Liquid Level&quot;
+5250                                               changed_incident = 1
+5260                                           Case &quot;Tube Hole Size Leak (Process)&quot;
+5270                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Tube Hole Size Leak (Process Fluid)&quot;
+5280                                               changed_incident = 1
+5290                                       End Select
+5300                                        If changed_incident = 0 Then
+5310                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+5320                                        End If
+5330                                    Case &quot;Out_MIF_Desc&quot;
+5340                                        srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;LOPA Offset Factor&quot;
+5350                                    Case &quot;Out_Scenario_Type&quot;
+5360                                        Select Case srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+                                             Case &quot;Pump Or Compressor Deadhead&quot;
+5370                                               If srwi.Cells(R, srwi.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Mechanical Seal Failure&quot; Or _
+                                                    srwi.Cells(R, srwi.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Seal Failure as Small Hole Size Leak (0.5 inch)&quot; Then
+5380                                                  srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Seal Leak&quot;
+5390                                                  Else
+5400                                                  srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Pump Deadhead&quot;
+5410                                               End If
+5420                                           Case &quot;ElectroStatic Build-up with Headspace Deflagration&quot;, &quot;Loss of Inert or Air Ingress with Headspace Deflagration&quot;
+5430                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Ignitable Headspace&quot;
+5440                                            Case &quot;Hose or Loading Arm Damage from Movement&quot;
+5450                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Damage from Movement&quot;
+5460                                            Case &quot;Excessive Vent Flow&quot;
+5470                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Excessive Pad Gas or Vapor Flow&quot;
+5480                                                If Not srwi.Cells(r_to, srw.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Vapor Displacement from Liquid Filling&quot; Then
+5490                                                    srw.Cells(r_to, srw.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Pad Gas Release&quot;
+5500                                                End If
+5510                                            Case &quot;ElectroStatic Discharge&quot;, &quot;ElectroStatic Build-up&quot;
+5520                                                If InStr(1, srwi.Cells(R, srwi.Range(&quot;Out_Equip_Type&quot;).Column).Value, &quot;(Solids)&quot;, vbTextCompare) &gt; 0 Then
+5530                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Suspension of Combustible Dust&quot;
+5540                                                Else
+5550                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Ignitable Headspace&quot;
+5560                                                End If
+5570                                            Case &quot;Excessive Inert Flow&quot;, &quot;Excessive Vent Flow&quot;, &quot;Excessive Vapor Flow&quot;
+5580                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Excessive Pad Gas or Vapor Flow&quot;
+5590                                            Case &quot;Transfer of Flammable Liquid&quot;
+5600                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Ignitable Headspace&quot;
+5610                                            Case &quot;Piping or Equipment LOPC - Relief&quot;, &quot;Piping or Equipment LOPC - Relief Failure&quot;
+5620                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Relief Device Failure&quot;
+5630                                            Case &quot;Piping or Equipment LOPC - Small&quot;
+5640                                                If InStr(1, srwi.Cells(R, srwi.Range(&quot;Out_Cause_Desc&quot;).Column).Value, &quot;Sight Glass&quot;, vbTextCompare) &gt; 0 And InStr(1, srwi.Cells(R, srwi.Range(&quot;Out_Cause&quot;).Column).Value, &quot;Mechanical&quot;, vbTextCompare) &gt; 0 Then
+5650                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Piping or Equipment Leak - Full Bore&quot;
+5660                                                    srw.Cells(r_to, srw.Range(&quot;Out_Cause&quot;).Column).Value = &quot;Sight Glass Failure&quot;
+5670                                                    If InStr(1, srwi.Cells(R, srwi.Range(&quot;Out_Incident&quot;).Column).Value, &quot;(top of vessel)&quot;, vbTextCompare) &gt; 0 Then
+5680                                                        srw.Cells(r_to, srw.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Full Bore Hole Size Leak above Liquid Level&quot;
+5690                                                        Else
+5700                                                        srw.Cells(r_to, srw.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Full Bore Hole Size Leak&quot;
+5710                                                    End If
+5720                                                    Else
+5730                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+5740                                                End If
+5750                                            Case &quot;Loss of Inert or Air Ingress&quot;
+5760                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Ignitable Headspace&quot;
+5770                                           Case &quot;Piping or Equipment LOPC - Extremely Large&quot;
+5780                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Integrity Failure - Extremely Large&quot;
+5790                                           Case &quot;Piping or Equipment LOPC - Very Large&quot;
+5800                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Integrity Failure - Very Large&quot;
+5810                                           Case &quot;Piping or Equipment LOPC - Large&quot;
+5820                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Piping or Equipment Leak - Full Bore&quot;
+5830                                           Case &quot;Piping or Equipment LOPC - Medium&quot;
+5840                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Integrity Failure - Medium&quot;
+5850                                           Case &quot;Piping or Equipment LOPC - Relief Failure&quot;
+5860                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Relief Device Failure&quot;
+5870                                           Case &quot;Piping or Equipment LOPC - Small&quot;
+5880                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Piping or Equipment Leak - Small&quot;
+5890                                           Case &quot;Piping or Equipment LOPC - Very Small&quot;
+5900                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mechanical Integrity Failure - Very Small&quot;
+5910                                           Case &quot;Seal or Casing LOPC&quot;, &quot;Seal or Casing Leak&quot;
+5920                                              If srwi.Cells(R, srwi.Range(&quot;Out_Cause&quot;).Column).Value = &quot;Canned/Magnetic Drive Pump Failure&quot; Then
+5930                                                  srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Casing or Containment Failure&quot;
+5935                                                  srw.Cells(r_to, srw.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Small Hole Size Leak&quot;
+5936                                                  srwi.Cells(R, srw.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Small Hole Size Leak&quot;
+5940                                              Else
+5950                                                  srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Seal Leak&quot;
+5960                                              End If
+5970                                           Case &quot;Tube Failure LOPC&quot;, &quot;Tube Failure Leak&quot;
+5980                                               srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Tube Failure&quot;
+5990                                          Case &quot;Hyrdraulic Surge&quot;
+6000                                              srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Hydraulic Surge&quot;
+6010                                              srw.Cells(r_to, srw.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Gasket Failure&quot;
+6020                                              srwi.Cells(R, srwi.Range(&quot;Out_Incident&quot;).Column).Value = &quot;Gasket Failure&quot;
+6030                                           Case Else
+6040                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6050                                        End Select
+6060                                    Case &quot;Out_Outcome&quot;
+6070                                        Select Case srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+                                            Case &quot;Indoor Toxic Release&quot;
+6080                                            If InStr(1, srwi.Cells(R, srwi.Range(&quot;Out_Outcome_Desc&quot;).Column).Value, &quot;Occupied Building&quot;, vbTextCompare) &gt; 0 Then
+6090                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Toxic Infiltration&quot;
+6100                                                Else
+6110                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6120                                            End If
+6130                                        Case &quot;Explosion Beyond Block Limit&quot;
+6140                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Equipment Explosion&quot;
+6145                                        Case &quot;Flash, Jet, or Pool Fire&quot;
+6146                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Flash Fire or Fireball&quot;
+6150                                        Case Else
+6160                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6170                                        End Select
+6180                                    Case &quot;Out_IPL6_Desc&quot;, &quot;Out_IPL7_Desc&quot;, &quot;Out_IPL8_Desc&quot;
+6190                                        Select Case srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+                                          Case &quot;Pressure Check of Equipment and Piping prior to RTO&quot;
+6200                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Manual Pressure Check of Equipment and Piping prior to RTO&quot;
+6210                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; Mid(input_name.Name, 8, 1)).Column).Value = 1
+6220                                            Case &quot;1 - Other Safety related protection systems -PFD=.1&quot;
+6230                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;1 - Other Safety related protection systems (PFD=.1)&quot;
+6240                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; Mid(input_name.Name, 8, 1)).Column).Value = 1
+6250                                            Case &quot;2 - Other Safety related protection systems -PFD=.01&quot;
+6260                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;2 - Other Safety related protection systems (PFD=.01)&quot;
+6270                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; Mid(input_name.Name, 8, 1)).Column).Value = 2
+6280                                            Case &quot;3 - Other Safety related protection systems -PFD=.001&quot;
+6290                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;3 - Other Safety related protection systems (PFD=.001)&quot;
+6300                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; Mid(input_name.Name, 8, 1)).Column).Value = 3
+6310                                            Case &quot;Management systems -Describe in Notes&quot;
+6320                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Management systems (Describe in Notes)&quot;
+6330                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; Mid(input_name.Name, 8, 1)).Column).Value = 1
+6340                                            Case &quot;Mitigation System -Deluge, Foam, etc. that results in ten-fold reduction in the consequence&quot;
+6350                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mitigation System (Deluge, Foam, etc.) that results in ten-fold reduction in the consequence&quot;
+6360                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; Mid(input_name.Name, 8, 1)).Column).Value = 1
+6370                                            Case &quot;Daily check of piping and equipment for very small leaks with effective detection means&quot;
+6380                                                If UCase(srwi.Cells(R, srwi.Range(&quot;Out_Equip_Type&quot;).Column).Value) = &quot;PUMP&quot; And UCase(srwi.Cells(R, srwi.Range(&quot;Out_Equip_Type&quot;).Column).Value) = &quot;SEAL OR CASING LOPC&quot; Then
+6390                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Daily check of equipment for small mechanical seal leaks with effective detection means&quot;
+6400                                                    srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; Mid(input_name.Name, 8, 1)).Column).Value = 1
+6410                                                    Else
+6420                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6430                                                End If
+6440                                            Case &quot;Elevated stack such that ground level concentration &lt; 0.1 X (confirmed by modeling)&quot;
+6450                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;1 - Other Safety related protection systems (PFD=.1)&quot;
+6460                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; Mid(input_name.Name, 8, 1)).Column).Value = 1
+6470                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; Mid(input_name.Name, 8, 1) &amp; &quot;_Detail&quot;).Column).Value = &quot;Elevated stack such that ground level concentration &lt; 0.1 X (confirmed by modeling). &quot; &amp; srwi.Cells(r_to, srwi.Range(&quot;Out_IPL&quot; &amp; Mid(input_name.Name, 8, 1) &amp; &quot;_Detail&quot;).Column).Value
+6480                                            Case &quot;100% Operator Attendance with visual detection and effective response capability within seconds&quot;
+6490                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;2 - Other Safety related protection systems (PFD=.01)&quot;
+6500                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; Mid(input_name.Name, 8, 1)).Column).Value = 2
+6510                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL&quot; &amp; Mid(input_name.Name, 8, 1) &amp; &quot;_Detail&quot;).Column).Value = &quot;100% Operator Attendance with visual detection and effective response capability within seconds. &quot; &amp; srwi.Cells(r_to, srwi.Range(&quot;Out_IPL&quot; &amp; Mid(input_name.Name, 8, 1) &amp; &quot;_Detail&quot;).Column).Value
+6520                                            Case Else
+6530                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6540                                        End Select
+6550                                    Case &quot;Out_IPL5_Desc&quot;
+6560                                        Select Case srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+                                          Case &quot;Partially Meets Dow Relief Design Criteria&quot;
+6570                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;&quot;
+6580                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Interior.ColorIndex = 3
+6590                                                relief_blanked = True
+6600                                            Case &quot;Fully Meets Dow Relief Design Criteria -No evidence of buildup&quot;
+6610                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Fully Meets Dow Relief Design Criteria (No evidence of buildup)&quot;
+6620                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_5&quot;).Column).Value = 2
+6630                                            Case &quot;Explosion Panels meeting NFPA 68 or equivalent -excluding High Flame Speed Vapor or Class 3 Dust&quot;
+6640                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Explosion Panels meeting NFPA 68 or equivalent (excluding High Flame Speed Vapor or Class 3 Dust)&quot;
+6650                                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_5&quot;).Column).Value = 2
+6660                                            Case Else
+6670                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6680                                        End Select
+6690                                    Case &quot;Out_Equip_Vol&quot;, &quot;Out_Hole&quot;, &quot;Out_TR&quot;, &quot;Out_RelP&quot;, &quot;Out_TRR&quot;, &quot;Out_PoolA&quot;, &quot;Out_AQ&quot;, &quot;Out_AR&quot;, &quot;Out_Dist_ERPG2&quot;, &quot;Out_Dist_ERPG3&quot;, &quot;Out_Dist_3x_ERPG3&quot;, &quot;Out_Dist_Half_LFL&quot;, &quot;Out_Dist_10psi&quot;, &quot;Out_Dist_1psi&quot;, &quot;Out_FM&quot;, &quot;Out_Dist_Debris&quot;, &quot;Out_Time_Relief&quot;
+6700                                        On Error Resume Next
+6710                                        Outcome_Summary_Value = vbNullString
+6720                                        Outcome_Num = vbNullString
+6730                                        Outcome_Unit = vbNullString
+6740                                        Space_Loc = 0
+6750                                        Outcome_Summary_Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6760                                        If Not IsError(Outcome_Summary_Value) Then
+6770                                            Space_Loc = InStr(1, Outcome_Summary_Value, &quot; &quot;, vbTextCompare)
+6780                                            If Not Outcome_Summary_Value = &quot;&quot; Then
+6790                                                If Space_Loc &gt; 0 Then
+6800                                                    Outcome_Num = Left(Outcome_Summary_Value, Space_Loc - 1)
+6810                                                    Outcome_Unit = Right(Outcome_Summary_Value, Len(Outcome_Summary_Value) - Space_Loc)
+6820                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = Outcome_Num
+6830                                                    srw.Cells(r_to, srw.Range(input_name.Name &amp; &quot;_Units&quot;).Column).Value = Outcome_Unit
+6840                                                    Else
+6850                                                    srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6860                                                End If
+6870                                            End If
+6880                                        End If
+6890                                        On Error GoTo General_Error
+6900                                    Case &quot;Out_Equip_Vol_Units&quot;, &quot;Out_Hole_Units&quot;, &quot;Out_TR_Units&quot;, &quot;Out_RelP_Units&quot;, &quot;Out_TRR_Units&quot;, &quot;Out_PoolA_Units&quot;, &quot;Out_AQ_Units&quot;, &quot;Out_AR_Units&quot;, &quot;Out_Dist_ERPG2_Units&quot;, &quot;Out_Dist_ERPG3_Units&quot;, &quot;Out_Dist_3x_ERPG3_Units&quot;, &quot;Out_Dist_Half_LFL_Units&quot;, &quot;Out_Dist_10psi_Units&quot;, &quot;Out_Dist_1psi_Units&quot;, &quot;Out_FM_Units&quot;, &quot;Out_Dist_Debris_Units&quot;, &quot;Out_Time_Relief_Units&quot;
+6910                                        On Error Resume Next
+6920                                        Outcome_Summary_Units = vbNullString
+6930                                        Outcome_Summary_Units = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6940                                        If Not IsError(Outcome_Summary_Units) Then
+6950                                            If Not Outcome_Summary_Units = &quot;&quot; Then
+6960                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+6970                                            End If
+6980                                        End If
+6990                                        On Error GoTo General_Error
+7000                                    Case &quot;Out_Equip_Type&quot;
+7010                                        On Error Resume Next
+7020                                        If srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Mill/Grinder-NonFluidized (Solids)&quot; Or srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Mill/Grinder-Fluidized (Solids)&quot; Then
+7030                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Mill/Grinder (solids)&quot;
+7040                                           ElseIf srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;Fired Equipment - Vapor Quench&quot; Then
+7050                                           srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = &quot;Vapor Quench&quot;
+7060                                            Else
+7070                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+7080                                        End If
+7090                                    Case Else
+7100                                        On Error Resume Next
+7110                                        If srwi.Cells(R, srwi.Range(input_name.Name).Column).HasFormula = True Then
+7120                                            srw.Cells(r_to, srw.Range(input_name.Name).Column).Formula = srwi.Cells(R, srwi.Range(input_name.Name).Column).Formula
+7130                                            Else
+7140                                            If Not srwi.Cells(R, srwi.Range(input_name.Name).Column).Value = &quot;#N/A&quot; Then
+7150                                                srw.Cells(r_to, srw.Range(input_name.Name).Column).Value = srwi.Cells(R, srwi.Range(input_name.Name).Column).Value
+7160                                            End If
+7170                                        End If
+7180                                        On Error GoTo General_Error
+7190                                    End Select
+7200                                End If
+7210                            Next input_name
+7220                            On Error Resume Next
+7230                            For y = 1 To 8
+7240                              srw.Cells(r_to, srw.Range(&quot;Out_IPL_&quot; &amp; y).Column).Value = srwi.Cells(R, srwi.Range(&quot;Out_IPL&quot; &amp; y).Column).Value
+7250                            Next y
+7260                            On Error GoTo General_Error
+7270                            If Left(srwi.Cells(R, srwi.Range(&quot;Out_Last_Version&quot;).Column).Value, 1) &lt; 4 Then
+7280                                On Error Resume Next
+7290                                If srwi.Cells(R, srwi.Range(&quot;Out_Outcome&quot;).Column).Value = &quot;Flash, Jet, or Pool Fire&quot; Or _
+                                        srwi.Cells(R, srwi.Range(&quot;Out_Outcome&quot;).Column).Value = &quot;Vapor Cloud Explosion&quot; Or _
+                                        srwi.Cells(R, srwi.Range(&quot;Out_Outcome&quot;).Column).Value = &quot;Building Explosion&quot; Then
+7300                                    srw.Cells(r_to, srw.Range(&quot;Out_POI_Desc&quot;).Column).Value = srwi.Cells(R, srwi.Range(&quot;Out_POI_Desc&quot;).Column).Value
+7310                                    srw.Cells(r_to, srw.Range(&quot;Out_POI_Detail&quot;).Column).Value = srwi.Cells(R, srwi.Range(&quot;Out_POI_Detail&quot;).Column).Value
+7320                                End If
+7330                                If Not srwi.Cells(R, srwi.Range(&quot;Out_PI&quot;).Column).Value = &quot;&quot; Then
+7340                                    srw.Cells(r_to, srw.Range(&quot;Out_POI_Desc&quot;).Column).Value = srwi.Cells(R, srwi.Range(&quot;Out_POI_Desc&quot;).Column).Value
+7350                                    srw.Cells(r_to, srw.Range(&quot;Out_POI_Detail&quot;).Column).Value = srwi.Cells(R, srwi.Range(&quot;Out_POI_Detail&quot;).Column).Value
+7360                                    Else
+7370                                    srw.Cells(r_to, srw.Range(&quot;Out_POI_Desc&quot;).Column).Value = &quot;&quot;
+7380                                    srw.Cells(r_to, srw.Range(&quot;Out_POI_Detail&quot;).Column).Value = &quot;&quot;
+7390                                End If
+7400                                If Not srwi.Cells(R, srwi.Range(&quot;Out_TEF&quot;).Column).Value = &quot;&quot; Then
+7410                                    srw.Cells(r_to, srw.Range(&quot;Out_EF_Desc&quot;).Column).Value = srwi.Cells(R, srwi.Range(&quot;Out_EF_Desc&quot;).Column).Value
+7420                                    srw.Cells(r_to, srw.Range(&quot;Out_EF_Detail&quot;).Column).Value = srwi.Cells(R, srwi.Range(&quot;Out_EF_Detail&quot;).Column).Value
+7430                                    Else
+7440                                    srw.Cells(r_to, srw.Range(&quot;Out_EF_Desc&quot;).Column).Value = &quot;&quot;
+7450                                    srw.Cells(r_to, srw.Range(&quot;Out_EF_Detail&quot;).Column).Value = &quot;&quot;
+7460                                End If
+7470                            End If
+7480                            If relief_blanked = True Then
+7490                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_5&quot;).Column).Value = &quot;&quot;
+7500                                srw.Cells(r_to, srw.Range(&quot;Out_IPL_5&quot;).Column).Interior.ColorIndex = 3
+7510                                srw.Cells(r_to, srw.Range(&quot;Out_IPL5_Detail&quot;).Column).Value = srw.Cells(r_to, srw.Range(&quot;Out_IPL5_Detail&quot;).Column).Value &amp; &quot; (Partial relief credit in imported file eliminated, update to current picklist item.)&quot;
+7520                            End If
+7530                            r_to = r_to + 1
+7540                        End If
+7550                        R = R + 1
+7560                    Next x
+
+7570                    R = Application.WorksheetFunction.CountA(srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) + srw.Range(&quot;Out_Scenario_No&quot;).Row - 2
+7580                    c = srw.UsedRange.Columns.Count
+7590                    If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row + 1 Then
+7600                        With srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, 1), srw.Cells(R, c))
+7610                            .Borders(xlEdgeLeft).LineStyle = xlContinuous
+7620                            .Borders(xlEdgeTop).LineStyle = xlContinuous
+7630                            .Borders(xlEdgeBottom).LineStyle = xlContinuous
+7640                            .Borders(xlEdgeRight).LineStyle = xlContinuous
+7650                            .Borders(xlInsideVertical).LineStyle = xlContinuous
+7660                            If R &gt; srw.Range(&quot;Out_Scenario_No&quot;).Row Then
+7670                                .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+7680                            End If
+7690                        End With
+7700                        For Each calc In srw.Range(&quot;Out_Release_Calcs&quot;)
+7710                            If UCase(Right(calc.Offset(0, 1).Name.Name, 5)) = &quot;UNITS&quot; Then
+7720                                srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).Borders(xlEdgeRight).LineStyle = xlNone
+7730                                srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column), srw.Cells(R, calc.Column)).HorizontalAlignment = xlRight
+7740                                srw.Range(srw.Cells(srw.Range(&quot;Out_Scenario_No&quot;).Row + 1, calc.Column + 1), srw.Cells(R, calc.Column + 1)).HorizontalAlignment = xlLeft
+7750                            End If
+7760                        Next calc
+7770                        With srw.Range(srw.Range(&quot;Out_Credible&quot;).Offset(1, 0), srw.Cells(R, srw.Range(&quot;Out_Credible&quot;).Column)).Validation
+7780                            .Delete
+7790                            .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
+                          xlBetween, Formula1:=&quot;Yes,No&quot;
+7800                            .IgnoreBlank = True
+7810                            .InCellDropdown = True
+7820                            .InputTitle = &quot;&quot;
+7830                            .ErrorTitle = &quot;&quot;
+7840                            .InputMessage = &quot;&quot;
+7850                            .ErrorMessage = &quot;&quot;
+7860                            .ShowInput = True
+7870                            .ShowError = True
+7880                        End With
+7890                    End If
+7900                End Select
+7910            Next s
+7920            Application.StatusBar = &quot;Please Wait...Importing Complete, Tidying Things Up&quot;
+7930            Workbooks(import).Close savechanges:=False
+7940            Application.EnableEvents = True
+7950            ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Activate
+7960            r1 = etw.Range(&quot;T_Equipment_Tag&quot;).Offset(1, 0).Row
+7970            R2 = etw.UsedRange.Rows.Count
+7980            If R2 &gt; r1 Then
+7990                etw.Range(etw.Cells(r1, 1), etw.Cells(R2, 1)).EntireRow.WrapText = False
+8000            End If
+8010            Application.GoTo reference:=Range(&quot;T_Equipment_Tag&quot;).Offset(1, 0), scroll:=True
+8020            If Auto_Valve_Changed = True Then
+8030                  MsgBox &quot;For Automated Suction &amp; Discharge Valve? Input, converted &quot;&quot;Yes&quot;&quot; to &quot;&quot;Both Suction &amp; Discharge&quot;&quot;.  Review if should be &quot;&quot;Discharge Only&quot;&quot;.&quot;&quot;&quot;
+8040                  Application.GoTo reference:=Range(&quot;T_Pump_Valves&quot;).Offset(1, 0), scroll:=True
+8050            End If
+8060        End If
+
+8070        ThisWorkbook.Check_for_Orphans
+
+8080        macrorunning = False
+8090        Application.Calculation = xlCalculationAutomatic
+8100        Application.StatusBar = False
+8110        Application.EnableEvents = True
+8120        Application.ScreenUpdating = True
+8130        Exit Sub
+
+      &apos; Error Opening File
+Opening_File_Undefined_Error:
+8140        MsgBox &quot;Error opening file.  Check that file is not already opened.&quot;
+8141        macrorunning = False
+8142        Application.StatusBar = False
+8143        Application.Calculation = xlCalculationAutomatic
+8144        Application.EnableEvents = True
+8145        Application.ScreenUpdating = True
+8246        End
+
+Opening_File_Error:
+8150        macrorunning = False
+8160        Application.StatusBar = False
+8170        Application.Calculation = xlCalculationAutomatic
+8180        Application.EnableEvents = True
+8190        Application.ScreenUpdating = True
+8200        End
+
+      &apos; General Error Handling
+General_Error:
+8210        Application.Calculation = xlCalculationAutomatic
+8220        Application.EnableEvents = True
+8230        Application.ScreenUpdating = True
+8240        macrorunning = False
+8250        calculate_only_running = False
+8260        MsgBox &quot;Error importing data from file, execution terminated with incomplete results.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Write down the following and contact tool SME for troubleshooting.&quot; &amp; Chr(13) &amp; Chr(13) &amp; &quot;Macro: Import_RAST&quot; &amp; Chr(13) &amp; &quot;Error Number: &quot; &amp; Err.Number &amp; Chr(13) &amp; &quot;Error Description: &quot; &amp; Err.Description &amp; Chr(13) &amp; &quot;Error Source: &quot; &amp; Err.Source &amp; Chr(13) &amp; &quot;Error Line: &quot; &amp; Erl
+8270        End
+
+End Sub
+
+
+Sub Load_Equipment_Manual()
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    macrorunning = True
+    Load_Equipment
+    macrorunning = False
+    With ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+        .Activate
+        currentFiltRange = .AutoFilter.Range.Address
+        .Range(currentFiltRange).AutoFilter
+        .Range(currentFiltRange).AutoFilter
+        If Range(&quot;Filter_Equipment&quot;).Value = &quot;Yes&quot; Then
+            If Not ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Equipment_Tag&quot;).Value = &quot;&quot; Then
+                .Range(currentFiltRange).AutoFilter _
+                    field:=.Range(&quot;Out_Equip_Tag&quot;).Column, _
+                    Criteria1:=ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Equipment_Tag&quot;).Value
+            End If
+        End If
+        ActiveWindow.ScrollRow = 1
+    End With
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Activate
+    ThisWorkbook.Worksheets(&quot;Main Menu&quot;).Range(&quot;Equipment_Tag&quot;).Activate
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+Sub Load_Equipment()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        Application.Calculation = xlCalculationManual
+    End If
+    R = ActiveCell.Row
+    If R &gt; ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Range(&quot;Equipment_Table_Headings&quot;).Row Then
+        If ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Cells(R, ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Range(&quot;T_Equipment_Tag&quot;).Column).Value &lt;&gt; &quot;&quot; Then
+            Clear_Input_Data
+            ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Chemical&quot;).Value = Trim(ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Cells(R, ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Range(&quot;T_Chemical&quot;).Column).Value)
+            ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Range(&quot;Fract_Key_Chemical&quot;).Value = Trim(ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Cells(R, ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Range(&quot;P_Fract_Key_Chemical&quot;).Column).Value)
+            For Each input_name In ThisWorkbook.Names
+                If Not input_name.Name = &quot;T_Save_Date&quot; And Not input_name.Name = &quot;Equipment_Table_Headings&quot; And InStr(1, input_name.RefersTo, &quot;&apos;Equipment Table&apos;!&quot;, vbTextCompare) &gt; 0 Then
+                    If Left(input_name.Name, 2) = &quot;T_&quot; Then
+                    test = input_name.Name
+                        Range(Right(input_name.Name, Len(input_name.Name) - 2)).Value = Trim(ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Cells(R, Range(input_name.Name).Column).Value)
+                        ElseIf Left(input_name.Name, 2) = &quot;P_&quot; And Not input_name.Name = &quot;P_Fract_Key_Chemical&quot; Then
+                        test = input_name.Name
+                        Range(Right(input_name.Name, Len(input_name.Name) - 2) &amp; &quot;_U&quot;).Value = Trim(ThisWorkbook.Worksheets(&quot;Equipment Table&quot;).Cells(R, Range(input_name.Name).Column).Value)
+                    End If
+               End If
+            Next input_name
+            ThisWorkbook.Worksheets(&quot;Chemical Data&quot;).Calculate
+            ThisWorkbook.Worksheets(&quot;Reaction Input&quot;).Calculate
+        End If
+    End If
+    Generate_Scenario_List
+    Application.StatusBar = False
+    If macrorunning = False Then
+        Application.Calculation = xlCalculationAutomatic
+        Application.ScreenUpdating = True
+    End If
+End Sub
+
+
+
+</script:module>

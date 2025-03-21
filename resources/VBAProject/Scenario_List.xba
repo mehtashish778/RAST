@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Scenario_List" script:language="StarBasic" script:moduleType="normal">Rem Attribute VBA_ModuleType=VBAModule
+Option VBASupport 1
+Sub Generate_Scenario_List()
+    If macrorunning = False Then
+        Application.ScreenUpdating = False
+        Application.Calculation = xlCalculationManual
+    End If
+    Set idw = ThisWorkbook.Worksheets(&quot;Equipment Input&quot;)
+    Set siw = ThisWorkbook.Worksheets(&quot;Scenario Identification&quot;)
+    Set slw = ThisWorkbook.Worksheets(&quot;Scenario List&quot;)
+    Set saw = ThisWorkbook.Worksheets(&quot;Scenario Analysis&quot;)
+    Set srw = ThisWorkbook.Worksheets(&quot;Scenario Results&quot;)
+    Set mmw = ThisWorkbook.Worksheets(&quot;Main Menu&quot;)
+    Equipment = mmw.Range(&quot;Equipment&quot;).Value
+    Application.Calculate
+    Clear_Scenario_List
+    Check_Input_Data
+&apos;    siw.Activate
+    Show_All_Scenarios
+&apos;    slw.Activate
+    slw.Unprotect
+    If IsEmpty(Worksheets(&quot;Scenario List&quot;).Range(&quot;D3&quot;).Value) = True Then
+        Worksheets(&quot;Scenario List&quot;).Range(&quot;D3:F7&quot;).Value = Worksheets(&quot;Scenario Identification&quot;).Range(&quot;DS3&quot;).Value
+    End If
+    If Not Equipment = &quot;&quot; Then
+        equipment_column = siw.Range(&quot;Equipment_Type&quot;).Find(Equipment).Column
+        r_to = slw.Range(&quot;List_Scenario_Type&quot;).Row + 1
+        Scenario_Num = 1
+        For Each scenario_type In siw.Range(&quot;Scenario_Type&quot;)
+            Scenario_Comment = siw.Cells(siw.Range(&quot;Scenario_Type2&quot;).Offset(Scenario_Num, 0).Row, equipment_column).Value
+            Parameter_Deviation = siw.Cells(scenario_type.Row, siw.Range(&quot;Parameter_Deviation&quot;).Column).Value
+            Scenario_Outcomes = siw.Cells(scenario_type.Row, siw.Range(&quot;Scenario_Outcomes&quot;).Column).Value
+            If Right(Scenario_Outcomes, 2) = &quot;; &quot; Then
+                Scenario_Outcomes = Left(Scenario_Outcomes, Len(Scenario_Outcomes) - 2)
+            End If
+            Included = siw.Cells(scenario_type.Row, siw.Range(&quot;Scenario_Included&quot;).Column).Value
+            If Not Included = &quot;&quot; Then
+                noie = Application.WorksheetFunction.CountIf(siw.Range(&quot;Initiating_Event&quot;).Offset(scenario_type.Row - siw.Range(&quot;Initiating_Event&quot;).Row, 0), &quot;X&quot;)
+                If Not noie = 0 Then
+                    ReDim CausesArray(noie)
+                    ReDim CauseDescriptions(noie)
+                    x = 1
+                    For Each cause In siw.Range(&quot;Initiating_Event&quot;)
+                        If Not siw.Cells(scenario_type.Row, cause.Column) = &quot;&quot; Then
+                            CausesArray(x) = cause.Value
+                            CauseDescriptions(x) = siw.Cells(siw.Range(&quot;Scenario_Type2&quot;).Offset(Scenario_Num, 0).Row, cause.Column).Value
+                            x = x + 1
+                        End If
+                     Next cause
+                     x = 1
+                     NoI = Application.WorksheetFunction.CountA(Range(&quot;Incident&quot;))
+                     ReDim IncidentArray(NoI)
+                     no_incidents = 0
+                     For Each incident In siw.Range(&quot;Incident&quot;)
+                        If Not IsError(siw.Cells(scenario_type.Row, incident.Column)) Then
+                            If siw.Cells(scenario_type.Row, incident.Column) = &quot;X&quot; Then
+                                For Q = 1 To noie
+                                    slw.Cells(r_to, slw.Range(&quot;List_Scenario_Type&quot;).Column).Value = scenario_type.Value
+                                    slw.Cells(r_to, slw.Range(&quot;List_Scenario_Description&quot;).Column).Value = Scenario_Comment
+                                    slw.Cells(r_to, slw.Range(&quot;List_Deviation&quot;).Column).Value = Parameter_Deviation
+                                    slw.Cells(r_to, slw.Range(&quot;List_Cause&quot;).Column).Value = CausesArray(Q)
+                                    slw.Cells(r_to, slw.Range(&quot;List_Cause_Description&quot;).Column).Value = CauseDescriptions(Q)
+                                    slw.Cells(r_to, slw.Range(&quot;List_Incident&quot;).Column).Value = incident.Value
+                                    slw.Cells(r_to, slw.Range(&quot;List_Included&quot;).Column).Value = Included
+                                    outcome_column = 0
+                                    Outcomes = &quot;&quot;
+                                    no_tf = 0
+                                    For Each tf In saw.Range(&quot;Results_TF&quot;)
+                                        If saw.Cells(saw.Range(&quot;Results_Incident&quot;).Row + x - 1, tf.Column).Value &lt;&gt; &quot;&quot; Then
+                                            If Outcomes = &quot;&quot; Then
+                                                Outcomes = slw.Cells(slw.Range(&quot;List_Outcome&quot;).Row, slw.Range(&quot;List_TF&quot;).Column + outcome_column).Value
+                                                Else
+                                                Outcomes = Outcomes &amp; &quot;, &quot; &amp; slw.Cells(slw.Range(&quot;List_Outcome&quot;).Row, slw.Range(&quot;List_TF&quot;).Column + outcome_column).Value
+                                            End If
+                                            slw.Cells(r_to, slw.Range(&quot;List_TF&quot;).Column + outcome_column).Value = saw.Cells(saw.Range(&quot;Results_Incident&quot;).Row + x - 1, tf.Column).Value
+                                            no_tf = no_tf + 1
+                                        End If
+                                        outcome_column = outcome_column + 1
+                                    Next tf
+                                    If Outcomes = &quot;&quot; Or no_tf = 0 Then
+                                        slw.Cells(r_to, slw.Range(&quot;List_Outcome_All&quot;).Column).Value = &quot;Consequence Does Not Exceed Threshold Criteria for Continuing with LOPA&quot;
+                                    Else
+                                        slw.Cells(r_to, slw.Range(&quot;List_Outcome_All&quot;).Column).Value = Outcomes
+                                    End If
+                                    r_to = r_to + 1
+                                Next Q
+                                no_incidents = no_incidents + 1
+                            End If
+                        End If
+                        x = x + 1
+                     Next incident
+                     If no_incidents = 0 Then
+                        For Q = 1 To noie
+                            slw.Cells(r_to, slw.Range(&quot;List_Scenario_Type&quot;).Column).Value = scenario_type.Value
+                            slw.Cells(r_to, slw.Range(&quot;List_Scenario_Description&quot;).Column).Value = Scenario_Comment
+                            slw.Cells(r_to, slw.Range(&quot;List_Deviation&quot;).Column).Value = Parameter_Deviation
+                            slw.Cells(r_to, slw.Range(&quot;List_Cause&quot;).Column).Value = CausesArray(Q)
+                            slw.Cells(r_to, slw.Range(&quot;List_Cause_Description&quot;).Column).Value = CauseDescriptions(Q)
+                            slw.Cells(r_to, slw.Range(&quot;List_Incident&quot;).Column).Value = &quot;Criteria for Triggering Incidents Not Met&quot; &apos; &quot;Consequence Does Not Exceed Threshold Criteria for Continuing with LOPA&quot;
+                            slw.Cells(r_to, slw.Range(&quot;List_Included&quot;).Column).Value = Included
+                            r_to = r_to + 1
+                        Next Q
+                     End If
+                End If
+            End If
+            Scenario_Num = Scenario_Num + 1
+        Next scenario_type
+        If slw.Range(&quot;List_Scenario_Type&quot;).Offset(1, 0).Value = &quot;&quot; Then
+            R = slw.Range(&quot;List_Scenario_Type&quot;).Row
+            Else
+            R = slw.Range(&quot;List_Scenario_Type&quot;).End(xlDown).Row
+        End If
+        c = slw.Range(&quot;List_Included&quot;).Column
+        If srw.FilterMode = True Then
+            filt = srw.AutoFilter.Range.Address
+            srw.Range(filt).AutoFilter
+            srw.Range(filt).AutoFilter
+        End If
+        filt = srw.AutoFilter.Range.Address
+        srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Equip_Tag&quot;).Column, Criteria1:=Range(&quot;Equipment_Tag&quot;).Value
+        srw.Range(filt).AutoFilter field:=srw.Range(&quot;Out_Source&quot;).Column, Criteria1:=&quot;User&quot;
+        Subtotal = Application.WorksheetFunction.Subtotal(3, srw.Columns(srw.Range(&quot;Out_Scenario_No&quot;).Column)) - 2
+        If Subtotal &gt; 0 Then
+            last = srw.UsedRange.Rows.Count
+            For Q = 3 To last
+                If srw.Rows(Q).Hidden = False Then
+                    slw.Cells(R + 1, slw.Range(&quot;List_Scenario_Type&quot;).Column).Value = _
+                        srw.Cells(Q, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value
+                    slw.Cells(R + 1, slw.Range(&quot;List_Cause&quot;).Column).Value = _
+                        srw.Cells(Q, srw.Range(&quot;Out_Cause&quot;).Column).Value
+                    slw.Cells(R + 1, slw.Range(&quot;List_Cause_Description&quot;).Column).Value = _
+                        srw.Cells(Q, srw.Range(&quot;Out_Cause_Desc&quot;).Column).Value
+                    slw.Cells(R + 1, slw.Range(&quot;List_Incident&quot;).Column).Value = _
+                        srw.Cells(Q, srw.Range(&quot;Out_Incident&quot;).Column).Value
+                    If UCase(srw.Cells(Q, srw.Range(&quot;Out_Credible&quot;).Column).Value) = &quot;NO&quot; Then
+                        slw.Cells(R + 1, slw.Range(&quot;List_Included&quot;).Column).Value = &quot;Excluded&quot;
+                        Else
+                        slw.Cells(R + 1, slw.Range(&quot;List_Included&quot;).Column).Value = &quot;Included&quot;
+                    End If
+                    otf = slw.Range(&quot;List_Outcome&quot;).Find(What:=srw.Cells(Q, srw.Range(&quot;Out_Outcome&quot;).Column).Value, LookIn:=xlValues).Column
+                    slw.Cells(R + 1, otf).Value = srw.Cells(Q, srw.Range(&quot;Out_TF_Used&quot;).Column).Value
+                    sr = siw.Range(&quot;Scenario_Type&quot;).Find(What:=srw.Cells(Q, srw.Range(&quot;Out_Scenario_Type&quot;).Column).Value, LookIn:=xlValues).Row
+                    slw.Cells(R + 1, slw.Range(&quot;List_Deviation&quot;).Column).Value = _
+                        siw.Cells(sr, siw.Range(&quot;Parameter_Deviation&quot;).Column).Value
+                    EC = siw.Range(&quot;Equipment_Type&quot;).Find(What:=mmw.Range(&quot;Equipment&quot;).Value, LookIn:=xlValues).Column
+                    slw.Cells(R + 1, slw.Range(&quot;List_Scenario_Description&quot;).Column).Value = &quot;User Scenario&quot;
+                    R = R + 1
+                End If
+            Next Q
+        End If
+        If srw.FilterMode = True Then
+            filt = srw.AutoFilter.Range.Address
+            srw.Range(filt).AutoFilter
+            srw.Range(filt).AutoFilter
+        End If
+        With slw.Range(slw.Cells(slw.Range(&quot;List_Scenario_Type&quot;).Row + 1, 1), slw.Cells(R, c))
+            .Sort key1:=Range(&quot;List_Included&quot;), Order1:=xlDescending, _
+                Key2:=Range(&quot;List_Scenario_Type&quot;), order2:=xlAscending, _
+                Header:=xlNo, OrderCustom:=1, MatchCase:=False, _
+                Orientation:=xlTopToBottom, DataOption1:=xlSortNormal
+            .Borders(xlEdgeLeft).LineStyle = xlContinuous
+            .Borders(xlEdgeTop).LineStyle = xlContinuous
+            .Borders(xlEdgeBottom).LineStyle = xlContinuous
+            .Borders(xlEdgeRight).LineStyle = xlContinuous
+            .Borders(xlInsideVertical).LineStyle = xlContinuous
+            If R &gt; slw.Range(&quot;List_Scenario_Type&quot;).Row + 1 Then
+                .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+            End If
+        End With
+        Application.DisplayAlerts = False
+        For Each Event_Column In Range(&quot;Event_Tree_Columns&quot;)
+            For current_row = slw.Range(&quot;List_Scenario_Type&quot;).Row + 1 To R
+                o = 1
+                Do While slw.Cells(current_row + o, slw.Range(&quot;List_Scenario_Type&quot;).Column).Value = slw.Cells(current_row, slw.Range(&quot;List_Scenario_Type&quot;).Column).Value And _
+                        slw.Cells(current_row + o, Event_Column.Column).Value = slw.Cells(current_row, Event_Column.Column).Value And _
+                        slw.Cells(current_row + o, slw.Range(&quot;List_Included&quot;).Column).Value = slw.Cells(current_row, slw.Range(&quot;List_Included&quot;).Column).Value
+                    slw.Range(slw.Cells(current_row, Event_Column.Column), slw.Cells(current_row + o, Event_Column.Column)).merge (False)
+                    o = o + 1
+                Loop
+                current_row = current_row + o - 1
+            Next current_row
+        Next Event_Column
+        For current_row = slw.Range(&quot;List_Scenario_Type&quot;).Row + 1 To R
+            If slw.Cells(current_row, slw.Range(&quot;List_Included&quot;).Column).Value = &quot;Excluded&quot; Then
+                slw.Range(slw.Cells(current_row, 1), slw.Cells(current_row, c)).Interior.ColorIndex = 15
+            End If
+            o = 1
+            Do While slw.Cells(current_row + o, slw.Range(&quot;List_Scenario_Type&quot;).Column).Value = slw.Cells(current_row, slw.Range(&quot;List_Scenario_Type&quot;).Column).Value And _
+                    slw.Cells(current_row + o, slw.Range(&quot;List_Included&quot;).Column).Value = slw.Cells(current_row, slw.Range(&quot;List_Included&quot;).Column).Value
+                If slw.Cells(current_row + o, slw.Range(&quot;List_Included&quot;).Column).Value = &quot;Excluded&quot; Then
+                    slw.Range(slw.Cells(current_row + o, 1), slw.Cells(current_row + o, c)).Interior.ColorIndex = 15
+                End If
+                slw.Range(slw.Cells(current_row, slw.Range(&quot;List_Scenario_Type&quot;).Column), slw.Cells(current_row + o, slw.Range(&quot;List_Scenario_Type&quot;).Column)).merge (False)
+                o = o + 1
+            Loop
+            current_row = current_row + o - 1
+        Next current_row
+        Application.DisplayAlerts = True
+    slw.Range(slw.Cells(slw.Range(&quot;List_Scenario_Type&quot;).Row + 1, 1), slw.Cells(R, c)).EntireRow.AutoFit
+    End If
+    
+    Application.Calculate
+    siw.Range(&quot;EP6:ER55&quot;).Copy
+    
+    slw.Unprotect
+    slw.Range(&quot;T11:V60&quot;).PasteSpecial Paste:=xlPasteValues
+        
+    slw.Range(&quot;A11:A60&quot;).Copy
+    slw.Range(&quot;T11:V60&quot;).PasteSpecial Paste:=xlPasteFormats
+    slw.Range(&quot;T11:V60&quot;).Locked = False
+    slw.Range(&quot;T11:V60&quot;).FormulaHidden = False
+    With slw.Range(&quot;T11:V60&quot;).Font
+        .Color = -4165632
+        .TintAndShade = 0
+    End With
+    slw.Protect DrawingObjects:=True, Contents:=True, Scenarios:=True, AllowFiltering:=True
+    slw.Activate
+    slw.Range(&quot;t11&quot;).Select
+    ActiveWindow.ScrollRow = 1
+    If macrorunning = False Then
+        Application.Calculation = xlCalculationAutomatic
+        Application.ScreenUpdating = True
+    End If
+End Sub
+
+
+
+</script:module>
