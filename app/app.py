@@ -19,6 +19,27 @@ from pages.equipment import render_equipment_database_page
 # Import utility modules
 from utils.database import get_db_manager
 from utils.init_db import init_database
+from utils.navigation import get_nav_manager
+
+# Update the page config at the start of app.py
+st.set_page_config(
+    page_title="HAZOP Analysis Tool",
+    page_icon="🏭",  # Optional: add an icon for your app
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
+)
+
+# Hide the default Streamlit pages navigation
+hide_pages = """
+<style>
+    [data-testid="stSidebarNav"] {display: none !important;}
+</style>
+"""
+st.markdown(hide_pages, unsafe_allow_html=True)
 
 def setup_streamlit():
     """Configure Streamlit page settings"""
@@ -46,42 +67,34 @@ def initialize_app():
     
     return st.session_state.db_initialized
 
+def setup_navigation():
+    """Setup navigation with registered pages"""
+    nav_manager = get_nav_manager()
+    
+    # Register pages with icons and order - make Home the default (order=1)
+    nav_manager.register_page("Home", render_home_page, "house", 1)
+    nav_manager.register_page("Chemical Database", render_chemical_database_page, "flask", 2)
+    nav_manager.register_page("Equipment Database", render_equipment_database_page, "gear", 3)
+
 def main():
     """Main application entry point"""
-    # Configure Streamlit settings
-    setup_streamlit()
-    
     # Initialize application
     if not initialize_app():
         st.error("Application failed to initialize properly. Please check the logs.")
         return
     
-    # Initialize session state for navigation if it doesn't exist
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = "Home"
+    # Setup navigation
+    setup_navigation()
+    nav_manager = get_nav_manager()
     
-    # App header
-    st.title("HAZOP Analysis Tool")
-    
-    # Sidebar navigation
-    st.sidebar.title("Navigation")
-    pages = ["Home", "Chemical Database", "Equipment Database"]
-    selected_page = st.sidebar.radio("Select Page", pages, index=pages.index(st.session_state.current_page))
+    # Render navigation and get selected page
+    selected_page = nav_manager.render_sidebar_navigation()
     
     # Update session state
     st.session_state.current_page = selected_page
     
     # Render the selected page
-    if selected_page == "Home":
-        render_home_page()
-    elif selected_page == "Chemical Database":
-        render_chemical_database_page()
-    elif selected_page == "Equipment Database":
-        render_equipment_database_page()
-    
-    # Footer
-    st.sidebar.markdown("---")
-    st.sidebar.caption("HAZOP Analysis Tool v0.1.0")
+    nav_manager.render_current_page(selected_page)
 
 if __name__ == "__main__":
     main()

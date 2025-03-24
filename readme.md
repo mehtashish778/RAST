@@ -17,7 +17,7 @@ The HAZOP (Hazard and Operability Study) Analysis Tool is a Streamlit-based web 
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/hazop-analysis-tool.git
+   git clone https://github.com/mehtashish778/hazop-analysis-tool.git
    cd hazop-analysis-tool
    ```
 
@@ -65,23 +65,23 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Implementation Plan
 
-### Phase 1: Core Data Models and Basic UI
-1. **Project Setup and Initial Streamlit App**
+### Phase 1: Core Data Models and Basic UI ✅ (Completed)
+1. **Project Setup and Initial Streamlit App** ✅
    - Set up project structure
    - Create basic Streamlit UI skeleton
    - Implement navigation system between different tools
 
-2. **Chemical Data Module**
+2. **Chemical Data Module** ✅
    - Create data models for chemicals
    - Implement import/export of chemical properties
    - Develop Streamlit interface for chemical data viewing/editing
 
-3. **Equipment Data Module**
+3. **Equipment Data Module** ✅
    - Define equipment class structure
    - Create equipment data entry forms in Streamlit
    - Implement equipment data storage and retrieval
 
-### Phase 2: Scenario Management Tools
+### Phase 2: Scenario Management Tools 🚧 (Not Started)
 4. **Scenario Identification Module**
    - Create scenario template structures
    - Implement basic scenario generation logic

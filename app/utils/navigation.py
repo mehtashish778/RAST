@@ -16,7 +16,7 @@ class NavigationManager:
         # Dictionary to store page rendering functions
         self.pages: Dict[str, Tuple[Callable, str, int]] = {}
         
-    def register_page(self, name: str, render_func: Callable, icon: str = "app", order: int = 999):
+    def register_page(self, name: str, render_func: Callable, icon: str = "house", order: int = 999):
         """
         Register a page with the navigation manager
         
@@ -69,15 +69,6 @@ class NavigationManager:
         
         st.sidebar.markdown("---")
         
-        # Display app info in the sidebar footer
-        with st.sidebar.expander("About", expanded=False):
-            st.markdown("""
-            ### HAZOP Analysis Tool
-            Version: 1.0.0
-            
-            Created as a modernized replacement for the legacy Excel-based tool.
-            """)
-        
         return selected_page
     
     def _format_nav_item(self, page_name: str, sorted_pages: List[Tuple[str, Callable, str]]) -> str:
@@ -91,8 +82,8 @@ class NavigationManager:
         Returns:
             Formatted string with icon and page name
         """
-        # Find the icon for the page
-        icon = next((icon for name, _, icon in sorted_pages if name == page_name), "app")
+        # Find the icon for the page, default to house icon for home page
+        icon = next((icon for name, _, icon in sorted_pages if name == page_name), "home")
         return f":{icon}: {page_name}"
     
     def render_current_page(self, page_name: str) -> None:
