@@ -15,6 +15,7 @@ sys.path.append(str(app_dir))
 from pages.home import render_home_page
 from pages.chemicals import render_chemical_database_page
 from pages.equipment import render_equipment_database_page
+from pages.scenarios import render_scenarios_page
 
 # Import utility modules
 from utils.database import get_db_manager
@@ -75,6 +76,7 @@ def setup_navigation():
     nav_manager.register_page("Home", render_home_page, "house", 1)
     nav_manager.register_page("Chemical Database", render_chemical_database_page, "flask", 2)
     nav_manager.register_page("Equipment Database", render_equipment_database_page, "gear", 3)
+    nav_manager.register_page("Scenarios", render_scenarios_page, "exclamation-triangle", 4)
 
 def main():
     """Main application entry point"""

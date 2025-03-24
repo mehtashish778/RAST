@@ -9,8 +9,10 @@ The HAZOP (Hazard and Operability Study) Analysis Tool is a Streamlit-based web 
 
 - Chemical Database Management
 - Equipment Database Management 
-- HAZOP Scenario Identification (Coming Soon)
-- LOPA Worksheet (Coming Soon)
+- HAZOP Scenario Management and Analysis
+- Consequence Modeling Functionality
+- Risk Assessment Matrix
+- Layer of Protection Analysis (LOPA) (Coming Soon)
 - Report Generation (Coming Soon)
 
 ## Installation
@@ -45,7 +47,43 @@ The HAZOP (Hazard and Operability Study) Analysis Tool is a Streamlit-based web 
    - Home: Overview of the application
    - Chemical Database: Manage chemical properties
    - Equipment Database: Manage process equipment
-   - (More features coming soon)
+   - Scenarios: Create and analyze HAZOP scenarios
+
+## Testing
+
+The project includes a comprehensive test suite with pytest:
+
+1. Install test dependencies:
+   ```
+   pip install -r tests/requirements-test.txt
+   ```
+
+2. Run all tests with coverage reporting:
+   ```
+   python -m pytest --cov=app
+   ```
+
+3. View test results and coverage reports in the terminal or generate HTML reports:
+   ```
+   python -m pytest --cov=app --cov-report=html
+   ```
+
+See the [tests/README.md](tests/README.md) file for more detailed testing instructions.
+
+### Test Coverage
+
+Current test coverage is at 13% of the codebase, with primary coverage in:
+- Consequence calculation module (88% coverage)
+- Data access layer (53% coverage)
+- Database management (45% coverage)
+
+Key tested components:
+- Consequence risk scoring and categorization
+- Database connection and query execution
+- Data access objects for equipment and scenarios
+- Basic application functionality
+
+Ongoing test development is focused on increasing coverage for UI components and remaining core modules.
 
 ## Data Management
 
@@ -81,37 +119,40 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Create equipment data entry forms in Streamlit
    - Implement equipment data storage and retrieval
 
-### Phase 2: Scenario Management Tools 🚧 (Not Started)
-4. **Scenario Identification Module**
+### Phase 2: Scenario Management Tools ✅ (Completed)
+4. **Scenario Identification Module** ✅
    - Create scenario template structures
    - Implement basic scenario generation logic
    - Build Streamlit interface for scenario browsing/editing
 
-5. **Scenario List Generator**
+5. **Scenario Analysis** ✅
    - Implement the scenario listing functionality
    - Create filtering and sorting capabilities
    - Develop visualization of scenario relationships
+   - Add risk matrix visualization
 
-6. **Basic Consequence Analysis**
-   - Implement simple consequence calculation algorithms
+6. **Basic Consequence Analysis** ✅
+   - Implement consequence calculation algorithms
    - Create visualization for consequence magnitudes
    - Build parameter sensitivity analysis tools
 
-### Phase 3: Risk Analysis Tools
-7. **Flash Calculation Module**
-   - Implement core thermodynamic calculations
-   - Create material property correlations
-   - Develop visualization of calculation results
-
-8. **Release Rate Calculations**
+### Phase 3: Risk Analysis Tools 🚧 (In Progress)
+7. **Release Rate Calculations** 🚧
    - Implement liquid/gas release models
    - Create discharge coefficient calculations
    - Build Streamlit interface for release scenario definition
 
-9. **Risk Assessment Matrix**
+8. **Risk Assessment** ✅
    - Implement risk ranking methodology
    - Create interactive risk matrix visualization
    - Develop scenario classification tools
+   - Unit tests for risk scoring functionality (88% coverage)
+
+9. **Testing Infrastructure** ✅
+   - Create comprehensive test suite for core functionality
+   - Implement mocks for database and external dependencies
+   - Setup continuous testing workflow
+   - Tests for consequence calculator, database, and data access layers
 
 ### Phase 4: LOPA Implementation
 10. **Independent Protection Layer (IPL) Module**
@@ -161,4 +202,24 @@ This project is licensed under the MIT License - see the LICENSE file for detail
     - Implement caching strategies
     - Optimize database queries and data handling
 
+19. **Test Coverage Enhancement**
+    - Expand unit test coverage to UI components
+    - Implement integration tests for end-to-end workflows
+    - Create automated performance testing
+
 ## Project Structure
+```
+hazop-analysis-tool/
+├── app/                # Main application code
+│   ├── core/           # Core business logic
+│   ├── data/           # Data storage
+│   ├── pages/          # Streamlit page modules
+│   ├── utils/          # Utility functions
+│   └── app.py          # Main application entry point
+├── tests/              # Test suite
+│   ├── test_*.py       # Test modules
+│   └── conftest.py     # Test fixtures and configuration
+├── resources/          # Static resources
+├── requirements.txt    # Application dependencies
+└── README.md           # Project documentation
+```

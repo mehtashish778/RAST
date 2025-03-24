@@ -295,10 +295,46 @@ class EquipmentDAO:
 
 
 class ScenarioDAO:
-    """Data Access Object for HAZOP Scenario data"""
+    """Data Access Object for Scenario data"""
     
     @staticmethod
-    def get_scenarios_by_equipment(equipment_id: str) -> List[Dict[str, Any]]:
+    def get_all_scenarios() -> List[Dict[str, Any]]:
+        """
+        Get all scenarios from the database
+        
+        Returns:
+            List of scenario dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(text("SELECT * FROM scenarios ORDER BY id"))
+        if result:
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def get_scenario_by_id(scenario_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a scenario by ID
+        
+        Args:
+            scenario_id: ID of the scenario
+            
+        Returns:
+            Scenario dictionary or None if not found
+        """
+        db = get_db_manager()
+        result = db.execute_query(
+            text("SELECT * FROM scenarios WHERE id = :id"),
+            {"id": scenario_id}
+        )
+        if result and result.rowcount > 0:
+            row = result.fetchone()
+            if row:
+                return dict(row._mapping)
+        return None
+    
+    @staticmethod
+    def get_scenarios_by_equipment(equipment_id: int) -> List[Dict[str, Any]]:
         """
         Get all scenarios for a specific piece of equipment
         
@@ -310,11 +346,31 @@ class ScenarioDAO:
         """
         db = get_db_manager()
         result = db.execute_query(
-            "SELECT * FROM scenarios WHERE equipment_id = :equipment_id ORDER BY id",
+            text("SELECT * FROM scenarios WHERE equipment_id = :equipment_id ORDER BY id"),
             {"equipment_id": equipment_id}
         )
         if result:
-            return [dict(row) for row in result]
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def get_scenarios_by_risk_category(risk_category: str) -> List[Dict[str, Any]]:
+        """
+        Get all scenarios with a specific risk category
+        
+        Args:
+            risk_category: Risk category to filter by
+            
+        Returns:
+            List of scenario dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(
+            text("SELECT * FROM scenarios WHERE risk_category = :risk_category ORDER BY id"),
+            {"risk_category": risk_category}
+        )
+        if result:
+            return [dict(row._mapping) for row in result]
         return []
     
     @staticmethod
@@ -332,7 +388,7 @@ class ScenarioDAO:
         session = db.get_session()
         
         try:
-            # Extract attributes that don't match direct columns
+            # Extract attributes that should be stored as JSON
             attributes = scenario_data.pop('attributes', {})
             
             # Convert attributes to JSON string
@@ -342,7 +398,7 @@ class ScenarioDAO:
             if 'id' in scenario_data and scenario_data['id']:
                 scenario_id = scenario_data['id']
                 existing = session.execute(
-                    "SELECT 1 FROM scenarios WHERE id = :id",
+                    text("SELECT 1 FROM scenarios WHERE id = :id"),
                     {"id": scenario_id}
                 ).fetchone()
                 
@@ -350,15 +406,15 @@ class ScenarioDAO:
                     # Build update query
                     set_clause = ", ".join([f"{k} = :{k}" for k in scenario_data.keys()])
                     session.execute(
-                        f"UPDATE scenarios SET {set_clause} WHERE id = :id",
+                        text(f"UPDATE scenarios SET {set_clause} WHERE id = :id"),
                         scenario_data
                     )
                 else:
                     # Insert new scenario
                     columns = ", ".join(scenario_data.keys())
-                    values = ", ".join([f":{k}" for k in scenario_data.keys()])
+                    placeholders = ", ".join([f":{k}" for k in scenario_data.keys()])
                     session.execute(
-                        f"INSERT INTO scenarios ({columns}) VALUES ({values})",
+                        text(f"INSERT INTO scenarios ({columns}) VALUES ({placeholders})"),
                         scenario_data
                     )
             else:
@@ -368,9 +424,9 @@ class ScenarioDAO:
                     
                 # Insert new scenario
                 columns = ", ".join(scenario_data.keys())
-                values = ", ".join([f":{k}" for k in scenario_data.keys()])
+                placeholders = ", ".join([f":{k}" for k in scenario_data.keys()])
                 session.execute(
-                    f"INSERT INTO scenarios ({columns}) VALUES ({values})",
+                    text(f"INSERT INTO scenarios ({columns}) VALUES ({placeholders})"),
                     scenario_data
                 )
             
@@ -399,7 +455,10 @@ class ScenarioDAO:
         session = db.get_session()
         
         try:
-            session.execute("DELETE FROM scenarios WHERE id = :id", {"id": scenario_id})
+            session.execute(
+                text("DELETE FROM scenarios WHERE id = :id"),
+                {"id": scenario_id}
+            )
             session.commit()
             return True
         except Exception as e:
@@ -408,4 +467,60 @@ class ScenarioDAO:
             print(f"Error deleting scenario: {e}")
             return False
         finally:
-            db.close_session(session) 
+            db.close_session(session)
+            
+    @staticmethod
+    def get_scenario_template(template_name: str) -> Dict[str, Any]:
+        """
+        Get a predefined scenario template
+        
+        Args:
+            template_name: Name of the template
+            
+        Returns:
+            Template dictionary with predefined values
+        """
+        templates = {
+            "high_pressure": {
+                "node": "Pressure System",
+                "deviation": "More Pressure",
+                "causes": "- Control valve failure\n- External fire\n- Blocked outlet\n- Thermal expansion",
+                "consequences": "- Equipment rupture\n- Release of material\n- Potential injury to personnel",
+                "safeguards": "- Pressure safety valve\n- High pressure alarm\n- Rupture disc",
+                "recommendations": "- Review PSV sizing\n- Add high pressure interlock",
+                "risk_category": "High",
+                "attributes": {"severity": 4, "likelihood": 2}
+            },
+            "low_flow": {
+                "node": "Flow System",
+                "deviation": "Less Flow",
+                "causes": "- Pump failure\n- Valve closed\n- Line blockage\n- Instrument failure",
+                "consequences": "- Process upset\n- Potential equipment damage\n- Product quality issues",
+                "safeguards": "- Low flow alarm\n- Standby pump\n- Flow indication",
+                "recommendations": "- Add auto-switching to standby pump\n- Review maintenance procedures",
+                "risk_category": "Medium",
+                "attributes": {"severity": 2, "likelihood": 3}
+            },
+            "high_temperature": {
+                "node": "Temperature System",
+                "deviation": "More Temperature",
+                "causes": "- Cooling failure\n- Control system failure\n- Exothermic reaction\n- External fire",
+                "consequences": "- Equipment damage\n- Product degradation\n- Potential runaway reaction",
+                "safeguards": "- High temperature alarm\n- Emergency cooling\n- Temperature indication",
+                "recommendations": "- Add independent high temperature shutdown\n- Review cooling system capacity",
+                "risk_category": "High",
+                "attributes": {"severity": 3, "likelihood": 3}
+            }
+        }
+        
+        return templates.get(template_name, {})
+    
+    @staticmethod
+    def get_available_templates() -> List[str]:
+        """
+        Get a list of available scenario templates
+        
+        Returns:
+            List of template names
+        """
+        return ["high_pressure", "low_flow", "high_temperature"] 
