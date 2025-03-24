@@ -704,7 +704,7 @@ def render_scenario_analysis_tab():
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    release_rate_fire = st.number_input("Release Rate (kg/s)", min_value=0.1, max_value=100.0, value=release_rate, step=0.1)
+                    release_rate_fire = st.number_input("Release Rate (kg/s)", min_value=0.1, max_value=100.0, value=max(0.1, release_rate), step=0.1)
                 
                 with col2:
                     heat_of_combustion = st.number_input("Heat of Combustion (kJ/kg)", min_value=1000.0, max_value=100000.0, value=45000.0, step=1000.0)

@@ -523,4 +523,571 @@ class ScenarioDAO:
         Returns:
             List of template names
         """
-        return ["high_pressure", "low_flow", "high_temperature"] 
+        return ["high_pressure", "low_flow", "high_temperature"]
+
+
+class IPLDAO:
+    """Data Access Object for Independent Protection Layer data"""
+    
+    @staticmethod
+    def get_all_ipls() -> List[Dict[str, Any]]:
+        """
+        Get all IPLs from the database
+        
+        Returns:
+            List of IPL dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(text("SELECT * FROM ipls ORDER BY id"))
+        if result:
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def get_ipl_by_id(ipl_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get an IPL by ID
+        
+        Args:
+            ipl_id: ID of the IPL
+            
+        Returns:
+            IPL dictionary or None if not found
+        """
+        db = get_db_manager()
+        result = db.execute_query(text("SELECT * FROM ipls WHERE id = :id"), {"id": ipl_id})
+        if result and result.rowcount > 0:
+            row = result.fetchone()
+            if row:
+                return dict(row._mapping)
+        return None
+    
+    @staticmethod
+    def get_ipls_by_scenario(scenario_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all IPLs for a specific scenario
+        
+        Args:
+            scenario_id: ID of the scenario
+            
+        Returns:
+            List of IPL dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(
+            text("SELECT * FROM ipls WHERE scenario_id = :scenario_id ORDER BY id"),
+            {"scenario_id": scenario_id}
+        )
+        if result:
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def get_ipls_by_lopa_scenario(lopa_scenario_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all IPLs for a specific LOPA scenario
+        
+        Args:
+            lopa_scenario_id: ID of the LOPA scenario
+            
+        Returns:
+            List of IPL dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(
+            text("SELECT * FROM ipls WHERE lopa_scenario_id = :lopa_scenario_id ORDER BY id"),
+            {"lopa_scenario_id": lopa_scenario_id}
+        )
+        if result:
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def add_or_update_ipl(ipl_data: Dict[str, Any]) -> bool:
+        """
+        Add or update an IPL in the database
+        
+        Args:
+            ipl_data: Dictionary containing IPL data
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        db = get_db_manager()
+        
+        # Check if IPL exists
+        ipl_id = ipl_data.get('id')
+        
+        try:
+            if ipl_id:
+                # Update existing IPL
+                # Remove id from data if present (to avoid trying to update primary key)
+                update_data = {k: v for k, v in ipl_data.items() if k != 'id'}
+                
+                # Prepare SET clause
+                set_items = []
+                for key in update_data:
+                    set_items.append(f"{key} = :{key}")
+                
+                set_clause = ", ".join(set_items)
+                
+                # Execute update
+                db.execute_query(
+                    text(f"UPDATE ipls SET {set_clause} WHERE id = :id"),
+                    {**update_data, "id": ipl_id}
+                )
+            else:
+                # Add new IPL
+                # Prepare columns and values for INSERT
+                columns = ", ".join(ipl_data.keys())
+                placeholders = ", ".join(f":{key}" for key in ipl_data.keys())
+                
+                # Execute insert
+                db.execute_query(
+                    text(f"INSERT INTO ipls ({columns}) VALUES ({placeholders})"),
+                    ipl_data
+                )
+            
+            return True
+        except Exception as e:
+            print(f"Error adding/updating IPL: {e}")
+            return False
+    
+    @staticmethod
+    def delete_ipl(ipl_id: int) -> bool:
+        """
+        Delete an IPL from the database
+        
+        Args:
+            ipl_id: ID of the IPL to delete
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        db = get_db_manager()
+        
+        try:
+            db.execute_query(
+                text("DELETE FROM ipls WHERE id = :id"),
+                {"id": ipl_id}
+            )
+            return True
+        except Exception as e:
+            print(f"Error deleting IPL: {e}")
+            return False
+
+
+class SIFDAO:
+    """Data Access Object for Safety Instrumented Function data"""
+    
+    @staticmethod
+    def get_all_sifs() -> List[Dict[str, Any]]:
+        """
+        Get all SIFs from the database
+        
+        Returns:
+            List of SIF dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(text("SELECT * FROM sifs ORDER BY id"))
+        if result:
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def get_sif_by_id(sif_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a SIF by ID
+        
+        Args:
+            sif_id: ID of the SIF
+            
+        Returns:
+            SIF dictionary or None if not found
+        """
+        db = get_db_manager()
+        result = db.execute_query(text("SELECT * FROM sifs WHERE id = :id"), {"id": sif_id})
+        if result and result.rowcount > 0:
+            row = result.fetchone()
+            if row:
+                return dict(row._mapping)
+        return None
+    
+    @staticmethod
+    def get_sifs_by_scenario(scenario_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all SIFs for a specific scenario
+        
+        Args:
+            scenario_id: ID of the scenario
+            
+        Returns:
+            List of SIF dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(
+            text("SELECT * FROM sifs WHERE scenario_id = :scenario_id ORDER BY id"),
+            {"scenario_id": scenario_id}
+        )
+        if result:
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def add_or_update_sif(sif_data: Dict[str, Any]) -> bool:
+        """
+        Add or update a SIF in the database
+        
+        Args:
+            sif_data: Dictionary containing SIF data
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        db = get_db_manager()
+        
+        # Check if SIF exists
+        sif_id = sif_data.get('id')
+        
+        try:
+            if sif_id:
+                # Update existing SIF
+                # Remove id from data if present (to avoid trying to update primary key)
+                update_data = {k: v for k, v in sif_data.items() if k != 'id'}
+                
+                # Prepare SET clause
+                set_items = []
+                for key in update_data:
+                    set_items.append(f"{key} = :{key}")
+                
+                set_clause = ", ".join(set_items)
+                
+                # Execute update
+                db.execute_query(
+                    text(f"UPDATE sifs SET {set_clause} WHERE id = :id"),
+                    {**update_data, "id": sif_id}
+                )
+            else:
+                # Add new SIF
+                # Prepare columns and values for INSERT
+                columns = ", ".join(sif_data.keys())
+                placeholders = ", ".join(f":{key}" for key in sif_data.keys())
+                
+                # Execute insert
+                db.execute_query(
+                    text(f"INSERT INTO sifs ({columns}) VALUES ({placeholders})"),
+                    sif_data
+                )
+            
+            return True
+        except Exception as e:
+            print(f"Error adding/updating SIF: {e}")
+            return False
+    
+    @staticmethod
+    def delete_sif(sif_id: int) -> bool:
+        """
+        Delete a SIF from the database
+        
+        Args:
+            sif_id: ID of the SIF to delete
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        db = get_db_manager()
+        
+        try:
+            # First delete any associated subsystems
+            db.execute_query(
+                text("DELETE FROM sif_subsystems WHERE sif_id = :sif_id"),
+                {"sif_id": sif_id}
+            )
+            
+            # Then delete the SIF
+            db.execute_query(
+                text("DELETE FROM sifs WHERE id = :id"),
+                {"id": sif_id}
+            )
+            return True
+        except Exception as e:
+            print(f"Error deleting SIF: {e}")
+            return False
+    
+    @staticmethod
+    def get_subsystems_by_sif(sif_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all subsystems for a specific SIF
+        
+        Args:
+            sif_id: ID of the SIF
+            
+        Returns:
+            List of subsystem dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(
+            text("SELECT * FROM sif_subsystems WHERE sif_id = :sif_id ORDER BY id"),
+            {"sif_id": sif_id}
+        )
+        if result:
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def add_or_update_subsystem(subsystem_data: Dict[str, Any]) -> bool:
+        """
+        Add or update a SIF subsystem in the database
+        
+        Args:
+            subsystem_data: Dictionary containing subsystem data
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        db = get_db_manager()
+        
+        # Check if subsystem exists
+        subsystem_id = subsystem_data.get('id')
+        
+        try:
+            if subsystem_id:
+                # Update existing subsystem
+                # Remove id from data if present (to avoid trying to update primary key)
+                update_data = {k: v for k, v in subsystem_data.items() if k != 'id'}
+                
+                # Prepare SET clause
+                set_items = []
+                for key in update_data:
+                    set_items.append(f"{key} = :{key}")
+                
+                set_clause = ", ".join(set_items)
+                
+                # Execute update
+                db.execute_query(
+                    text(f"UPDATE sif_subsystems SET {set_clause} WHERE id = :id"),
+                    {**update_data, "id": subsystem_id}
+                )
+            else:
+                # Add new subsystem
+                # Prepare columns and values for INSERT
+                columns = ", ".join(subsystem_data.keys())
+                placeholders = ", ".join(f":{key}" for key in subsystem_data.keys())
+                
+                # Execute insert
+                db.execute_query(
+                    text(f"INSERT INTO sif_subsystems ({columns}) VALUES ({placeholders})"),
+                    subsystem_data
+                )
+            
+            return True
+        except Exception as e:
+            print(f"Error adding/updating SIF subsystem: {e}")
+            return False
+    
+    @staticmethod
+    def delete_subsystem(subsystem_id: int) -> bool:
+        """
+        Delete a SIF subsystem from the database
+        
+        Args:
+            subsystem_id: ID of the subsystem to delete
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        db = get_db_manager()
+        
+        try:
+            db.execute_query(
+                text("DELETE FROM sif_subsystems WHERE id = :id"),
+                {"id": subsystem_id}
+            )
+            return True
+        except Exception as e:
+            print(f"Error deleting SIF subsystem: {e}")
+            return False
+
+
+class LOPAScenarioDAO:
+    """Data Access Object for LOPA Scenario data"""
+    
+    @staticmethod
+    def get_all_lopa_scenarios() -> List[Dict[str, Any]]:
+        """
+        Get all LOPA scenarios from the database
+        
+        Returns:
+            List of LOPA scenario dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(text("SELECT * FROM lopa_scenarios ORDER BY id"))
+        if result:
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def get_lopa_scenario_by_id(lopa_scenario_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a LOPA scenario by ID
+        
+        Args:
+            lopa_scenario_id: ID of the LOPA scenario
+            
+        Returns:
+            LOPA scenario dictionary or None if not found
+        """
+        db = get_db_manager()
+        result = db.execute_query(
+            text("SELECT * FROM lopa_scenarios WHERE id = :id"),
+            {"id": lopa_scenario_id}
+        )
+        if result and result.rowcount > 0:
+            row = result.fetchone()
+            if row:
+                return dict(row._mapping)
+        return None
+    
+    @staticmethod
+    def get_lopa_scenarios_by_scenario(scenario_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all LOPA scenarios for a specific HAZOP scenario
+        
+        Args:
+            scenario_id: ID of the HAZOP scenario
+            
+        Returns:
+            List of LOPA scenario dictionaries
+        """
+        db = get_db_manager()
+        result = db.execute_query(
+            text("SELECT * FROM lopa_scenarios WHERE scenario_id = :scenario_id ORDER BY id"),
+            {"scenario_id": scenario_id}
+        )
+        if result:
+            return [dict(row._mapping) for row in result]
+        return []
+    
+    @staticmethod
+    def add_or_update_lopa_scenario(lopa_data: Dict[str, Any]) -> bool:
+        """
+        Add or update a LOPA scenario in the database
+        
+        Args:
+            lopa_data: Dictionary containing LOPA scenario data
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        db = get_db_manager()
+        
+        # Check if LOPA scenario exists
+        lopa_id = lopa_data.get('id')
+        
+        try:
+            if lopa_id:
+                # Update existing LOPA scenario
+                # Remove id from data if present (to avoid trying to update primary key)
+                update_data = {k: v for k, v in lopa_data.items() if k != 'id'}
+                
+                # Prepare SET clause
+                set_items = []
+                for key in update_data:
+                    set_items.append(f"{key} = :{key}")
+                
+                set_clause = ", ".join(set_items)
+                
+                # Execute update
+                db.execute_query(
+                    text(f"UPDATE lopa_scenarios SET {set_clause} WHERE id = :id"),
+                    {**update_data, "id": lopa_id}
+                )
+            else:
+                # Add new LOPA scenario
+                # Prepare columns and values for INSERT
+                columns = ", ".join(lopa_data.keys())
+                placeholders = ", ".join(f":{key}" for key in lopa_data.keys())
+                
+                # Execute insert
+                db.execute_query(
+                    text(f"INSERT INTO lopa_scenarios ({columns}) VALUES ({placeholders})"),
+                    lopa_data
+                )
+            
+            return True
+        except Exception as e:
+            print(f"Error adding/updating LOPA scenario: {e}")
+            return False
+    
+    @staticmethod
+    def delete_lopa_scenario(lopa_scenario_id: int) -> bool:
+        """
+        Delete a LOPA scenario from the database
+        
+        Args:
+            lopa_scenario_id: ID of the LOPA scenario to delete
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        db = get_db_manager()
+        
+        try:
+            # Delete associated IPLs first
+            db.execute_query(
+                text("DELETE FROM ipls WHERE lopa_scenario_id = :lopa_scenario_id"),
+                {"lopa_scenario_id": lopa_scenario_id}
+            )
+            
+            # Delete the LOPA scenario
+            db.execute_query(
+                text("DELETE FROM lopa_scenarios WHERE id = :id"),
+                {"id": lopa_scenario_id}
+            )
+            return True
+        except Exception as e:
+            print(f"Error deleting LOPA scenario: {e}")
+            return False
+    
+    @staticmethod
+    def get_lopa_summary() -> pd.DataFrame:
+        """
+        Get a summary of all LOPA scenarios with their associated IPLs
+        
+        Returns:
+            Pandas DataFrame with LOPA summary data
+        """
+        db = get_db_manager()
+        
+        query = text("""
+            SELECT 
+                l.id, 
+                l.scenario_id,
+                l.description,
+                l.consequence_category,
+                l.consequence_severity,
+                l.initiating_event,
+                l.initiating_event_frequency,
+                l.target_mitigated_frequency,
+                COUNT(i.id) as ipl_count,
+                s.node,
+                s.deviation
+            FROM 
+                lopa_scenarios l
+            LEFT JOIN 
+                ipls i ON l.id = i.lopa_scenario_id
+            LEFT JOIN
+                scenarios s ON l.scenario_id = s.id
+            GROUP BY 
+                l.id
+            ORDER BY 
+                l.id
+        """)
+        
+        result = db.execute_query(query)
+        
+        if result:
+            data = [dict(row._mapping) for row in result]
+            return pd.DataFrame(data)
+        
+        return pd.DataFrame() 

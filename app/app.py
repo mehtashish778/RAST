@@ -81,6 +81,10 @@ def setup_navigation():
     # Import the release page function dynamically to avoid circular imports
     from pages.release import render_release_calculation_page
     nav_manager.register_page("Release Calculations", render_release_calculation_page, "droplet", 5)
+    
+    # Import the LOPA page function dynamically
+    from pages.lopa import render_lopa_page
+    nav_manager.register_page("LOPA", render_lopa_page, "shield", 6)
 
 def main():
     """Main application entry point"""

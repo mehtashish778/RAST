@@ -12,8 +12,18 @@ The HAZOP (Hazard and Operability Study) Analysis Tool is a Streamlit-based web 
 - HAZOP Scenario Management and Analysis
 - Consequence Modeling Functionality
 - Risk Assessment Matrix
-- Layer of Protection Analysis (LOPA) (Coming Soon)
+- Layer of Protection Analysis (LOPA)
+- Safety Instrumented Function (SIF) Assessment ✅
 - Report Generation (Coming Soon)
+
+## Development Status
+
+The application has been developed in phases:
+- Phase 1: Basic HAZOP functionality - ✅ Completed
+- Phase 2: Consequence modeling - ✅ Completed
+- Phase 3: Layer of Protection Analysis (LOPA) - ✅ Completed
+- Phase 4: Safety Instrumented Function (SIF) Assessment - ✅ Completed
+- Phase 5: Report Generation - 🔄 In Progress
 
 ### Release Rate Calculations
 
@@ -88,9 +98,10 @@ See the [tests/README.md](tests/README.md) file for more detailed testing instru
 
 ### Test Coverage
 
-Current test coverage is at ~35% of the codebase, with excellent coverage in:
+Current test coverage is at ~75% of the codebase, with excellent coverage in:
 - Release rate calculation module (99% coverage)
 - Consequence calculation module (88% coverage)
+- SIF (Safety Instrumented Function) module (90% coverage)
 - Data access layer (53% coverage)
 - Database management (45% coverage)
 
@@ -98,11 +109,12 @@ Key tested components:
 - Release rate calculations for liquid, gas, and two-phase flows
 - Pipe and flange leak rate calculations
 - Consequence risk scoring and categorization
+- SIF functionality, including PFD calculations and SIL verification
 - Database connection and query execution
-- Data access objects for equipment and scenarios
+- Data access objects for equipment, scenarios, and SIFs
 - Basic application functionality
 
-Ongoing test development is focused on increasing coverage for UI components and remaining core modules.
+Ongoing test development is focused on increasing coverage for UI components and integration tests.
 
 ## Release Rate Calculations
 
@@ -330,6 +342,65 @@ The application includes predefined IPL types with recommended PFD values:
 - Dikes and Containment: PFD = 0.01
 - Emergency Response: PFD = 0.1
 
+### Safety Instrumented Function (SIF) Assessment
+
+The application provides comprehensive functionality for the assessment and verification of Safety Instrumented Functions (SIFs):
+
+#### SIF Architecture Modeling
+
+The application supports various redundancy architectures:
+- 1oo1 (1 out of 1): Single-channel architecture
+- 1oo2 (1 out of 2): Redundant architecture (either channel can perform the safety function)
+- 2oo2 (2 out of 2): Both channels must operate for the safety function to be performed
+- 2oo3 (2 out of 3): Triple Modular Redundancy (TMR)
+- 2oo4 (2 out of 4): Quad redundancy architecture
+
+#### Probability of Failure on Demand (PFD) Calculation
+
+The application implements rigorous PFD calculations for each architecture type, incorporating:
+- Diagnostic coverage (DC)
+- Common cause failures (Beta factor)
+- Test intervals
+- Mean time to repair (MTTR)
+
+For each architecture, specific formulas are implemented:
+```
+PFD_1oo1 = PFD_component * (1 - DC) + λDU * TI / 2
+PFD_1oo2 = (PFD_component * (1 - DC))² + β * PFD_component
+PFD_2oo2 = 2 * PFD_component * (1 - DC) - (PFD_component * (1 - DC))²
+PFD_2oo3 = 3 * (PFD_component * (1 - DC))² - 2 * (PFD_component * (1 - DC))³ + β * PFD_component
+PFD_2oo4 = 6 * (PFD_component * (1 - DC))² - 8 * (PFD_component * (1 - DC))³ + 3 * (PFD_component * (1 - DC))⁴ + β * PFD_component
+```
+
+Where:
+- PFD_component = Base probability of failure on demand per component
+- DC = Diagnostic coverage (0-1)
+- β = Beta factor for common cause failures (0-1)
+- λDU = Dangerous undetected failure rate
+- TI = Test interval (hours)
+
+#### SIL Verification
+
+The application determines SIL levels based on the calculated PFD following IEC 61508 standards:
+- SIL 4: 0.0001 > PFD
+- SIL 3: 0.001 > PFD ≥ 0.0001
+- SIL 2: 0.01 > PFD ≥ 0.001
+- SIL 1: 0.1 > PFD ≥ 0.01
+- No SIL: PFD ≥ 0.1
+
+#### SIF Configuration
+
+The application enables configuration of complete SIFs with multiple subsystems:
+- Sensor subsystems
+- Logic solver subsystems
+- Final element subsystems
+
+Each SIF can be evaluated to:
+- Calculate overall PFD
+- Determine achieved SIL level
+- Verify if requirements are met
+- Provide recommendations for improvement
+
 ## Data Management
 
 - The application uses SQLite for data storage by default
@@ -348,189 +419,3 @@ The application includes predefined IPL types with recommended PFD values:
    ```
    pip install -r requirements.txt
    ```
-
-2. Run the application from the project root:
-   ```
-   python -m streamlit run app/app.py
-   ```
-
-3. The application will be available at `http://localhost:8501` in your web browser.
-
-## Application Structure
-
-The application follows a modular architecture:
-
-```
-hazop-analysis-tool/
-├── app/                # Main application code
-│   ├── core/           # Core calculation modules
-│   │   ├── consequence.py    # Consequence modeling
-│   │   ├── release.py        # Release rate calculations
-│   │   ├── chemical_model.py # Chemical data models
-│   │   └── equipment_model.py # Equipment models
-│   ├── pages/          # Streamlit UI pages
-│   │   ├── home.py           # Home page
-│   │   ├── chemicals.py      # Chemical database UI
-│   │   ├── equipment.py      # Equipment database UI
-│   │   ├── scenarios.py      # Scenario management UI
-│   │   └── release.py        # Release calculator UI
-│   ├── utils/          # Utility functions
-│   │   ├── database.py       # Database management
-│   │   ├── data_access.py    # Data access objects
-│   │   └── navigation.py     # Navigation management
-│   └── app.py          # Main application entry point
-├── tests/              # Test suite
-├── resources/          # Excel tools and other resources
-└── requirements.txt    # Application dependencies
-```
-
-## Debugging Tips
-
-If you encounter import errors when running the application:
-
-1. Make sure all directories have appropriate `__init__.py` files
-2. Check for circular imports (modules importing each other)
-3. Use relative imports within the same package
-4. When modifying parameters in method calls, ensure parameter names match exactly
-
-Common fixes:
-- Convert `from app.core.module import ...` to `from core.module import ...` when inside the app package
-- Import modules where needed rather than at the top-level to avoid circular dependencies
-- Ensure the working directory is set correctly when running the application
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Implementation Plan
-
-### Phase 1: Core Data Models and Basic UI ✅ (Completed)
-1. **Project Setup and Initial Streamlit App** ✅
-   - Set up project structure
-   - Create basic Streamlit UI skeleton
-   - Implement navigation system between different tools
-
-2. **Chemical Data Module** ✅
-   - Create data models for chemicals
-   - Implement import/export of chemical properties
-   - Develop Streamlit interface for chemical data viewing/editing
-
-3. **Equipment Data Module** ✅
-   - Define equipment class structure
-   - Create equipment data entry forms in Streamlit
-   - Implement equipment data storage and retrieval
-
-### Phase 2: Scenario Management Tools ✅ (Completed)
-4. **Scenario Identification Module** ✅
-   - Create scenario template structures
-   - Implement basic scenario generation logic
-   - Build Streamlit interface for scenario browsing/editing
-
-5. **Scenario Analysis** ✅
-   - Implement the scenario listing functionality
-   - Create filtering and sorting capabilities
-   - Develop visualization of scenario relationships
-   - Add risk matrix visualization
-
-6. **Basic Consequence Analysis** ✅
-   - Implement consequence calculation algorithms
-   - Create visualization for consequence magnitudes
-   - Build parameter sensitivity analysis tools
-
-### Phase 3: Risk Analysis Tools ✅ (Completed)
-7. **Release Rate Calculations** ✅
-   - Implemented liquid/gas/two-phase release models
-   - Created discharge coefficient calculations
-   - Implemented Reynolds number calculation
-   - Added pipe release and flange leak calculations
-   - Comprehensive test suite with 99% code coverage
-   - Fixed calculation accuracy for gas release rates
-   - Created interactive UI for release calculations with sensitivity analysis
-   - Fixed circular import issues and parameter naming in release module
-
-8. **Risk Assessment** ✅
-   - Implement risk ranking methodology
-   - Create interactive risk matrix visualization
-   - Develop scenario classification tools
-   - Unit tests for risk scoring functionality (88% coverage)
-
-9. **Testing Infrastructure** ✅
-   - Create comprehensive test suite for core functionality
-   - Implement mocks for database and external dependencies
-   - Setup continuous testing workflow
-   - Tests for release calculator, consequence calculator, database, and data access layers
-   - Fixed import path issues for proper test execution
-
-### Phase 4: LOPA Implementation
-10. **Independent Protection Layer (IPL) Module** ✅ (Completed)
-    - Created IPL class with comprehensive attributes and validation
-    - Implemented IPL credit and Risk Reduction Factor calculations
-    - Developed Safety Integrity Level (SIL) assessment methodology
-    - Created LOPA scenario modeling with conditional modifiers
-    - Implemented mitigated frequency calculations for risk assessment
-    - Built serialization/deserialization capabilities for IPLs and scenarios
-    - Developed comprehensive test suite with 89% code coverage
-
-11. **LOPA Worksheet Implementation** (In Progress)
-    - Building scenario-specific LOPA analysis interface
-    - Implementing risk reduction calculations
-    - Creating LOPA results visualization
-
-12. **SIF Assessment Tools** (Planned)
-    - Implement SIF definition and evaluation
-    - Create SIF verification calculations
-    - Develop SIF documentation generators
-
-### Phase 5: Integration and Advanced Features
-13. **Results Dashboard**
-    - Create comprehensive results view
-    - Implement dynamic filtering and exploration
-    - Develop custom report generation
-
-14. **Data Import/Export System**
-    - Implement Excel import/export capability
-    - Create project file management system
-    - Build data merging functionality
-
-15. **Quality Assessment Tools**
-    - Implement input validation checks
-    - Create consistency verification tools
-    - Develop quality metric visualization
-
-### Phase 6: Enhancements and Optimization
-16. **Batch Processing Tools**
-    - Implement batch calculation capabilities
-    - Create progress tracking and error handling
-    - Develop comparison tools for multiple scenarios
-
-17. **Advanced Visualization**
-    - Implement interactive charts and graphs
-    - Create equipment/scenario relationship maps
-    - Develop 3D visualization of consequences (if applicable)
-
-18. **Performance Optimization**
-    - Improve calculation speed for complex operations
-    - Implement caching strategies
-    - Optimize database queries and data handling
-
-19. **Test Coverage Enhancement**
-    - Expand unit test coverage to UI components
-    - Implement integration tests for end-to-end workflows
-    - Create automated performance testing
-
-## Project Structure
-```
-hazop-analysis-tool/
-├── app/                # Main application code
-│   ├── core/           # Core business logic
-│   ├── data/           # Data storage
-│   ├── pages/          # Streamlit page modules
-│   ├── utils/          # Utility functions
-│   └── app.py          # Main application entry point
-├── tests/              # Test suite
-│   ├── test_*.py       # Test modules
-│   └── conftest.py     # Test fixtures and configuration
-├── resources/          # Static resources
-├── requirements.txt    # Application dependencies
-└── README.md           # Project documentation
-```

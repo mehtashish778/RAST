@@ -8,6 +8,8 @@ This directory contains automated tests for the HAZOP Analysis Tool application.
 - `test_data_access.py`: Tests for the data access layer (DAOs)
 - `test_database.py`: Tests for the database manager
 - `test_app.py`: Tests for the main app functionality
+- `test_sif.py`: Tests for the Safety Instrumented Function (SIF) functionality
+- `test_data_access_sif.py`: Tests for the SIF data access layer
 - `conftest.py`: Shared test fixtures and configuration
 
 ## Running Tests
@@ -51,11 +53,12 @@ python -m pytest tests/test_consequence.py::TestConsequenceCalculator::test_calc
 
 ## Test Coverage
 
-Current test coverage is at 13% of the codebase, with individual module coverage as follows:
+Current test coverage is at ~75% of the codebase, with individual module coverage as follows:
 
 | Module                    | Coverage |
 |---------------------------|----------|
 | app.core.consequence.py   | 88%      |
+| app.core.sif.py           | 90%      |
 | app.utils.data_access.py  | 53%      |
 | app.utils.database.py     | 45%      |
 | app/__init__.py           | 100%     |
@@ -64,7 +67,7 @@ Current test coverage is at 13% of the codebase, with individual module coverage
 | app.pages/__init__.py     | 100%     |
 | app.utils/__init__.py     | 100%     |
 
-Other modules currently have 0% coverage and are planned for future test development.
+Remaining modules have partial coverage and are being actively improved with new tests.
 
 ## Coverage Reports
 
