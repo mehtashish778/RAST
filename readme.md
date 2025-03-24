@@ -283,6 +283,53 @@ Where:
 - PFD = Probability of Failure on Demand for each protection layer
 - initiating_event_frequency = Frequency of the initiating event (per year)
 
+### Layer of Protection Analysis (LOPA)
+
+The application implements a comprehensive Layer of Protection Analysis framework following industry standards:
+
+#### IPL Credit Calculation
+
+```
+mitigated_frequency = initiating_event_frequency * PFD₁ * PFD₂ * ... * PFDₙ * CM₁ * CM₂ * ... * CMₘ
+risk_reduction_factor = initiating_event_frequency / mitigated_frequency
+```
+
+Where:
+- PFD = Probability of Failure on Demand for each protection layer (0-1)
+- CM = Conditional modifier (probability factors like ignition probability)
+- initiating_event_frequency = Frequency of the initiating event (per year)
+
+#### Safety Integrity Level (SIL) Determination
+
+The application calculates required SIL levels for Safety Instrumented Functions (SIFs) based on:
+
+```
+required_PFD = target_mitigated_frequency / intermediate_frequency
+```
+
+Where:
+- target_mitigated_frequency = Risk tolerance criteria (events/year)
+- intermediate_frequency = Frequency after applying existing IPLs (events/year)
+
+The SIL level is determined based on the required PFD:
+- SIL 1: 0.1 ≥ PFD > 0.01
+- SIL 2: 0.01 ≥ PFD > 0.001
+- SIL 3: 0.001 ≥ PFD > 0.0001
+- SIL 4: 0.0001 ≥ PFD > 0.00001
+
+#### IPL Types and Credits
+
+The application includes predefined IPL types with recommended PFD values:
+- Basic Process Control System (BPCS): PFD = 0.1
+- Alarm with Operator Response: PFD = 0.1
+- Safety Instrumented System (SIS): PFD = 0.01 (SIL 2)
+- Mechanical Protection Devices: PFD = 0.01
+- Physical Protection: PFD = 0.01
+- Procedural Protection: PFD = 0.1
+- Relief Devices: PFD = 0.01
+- Dikes and Containment: PFD = 0.01
+- Emergency Response: PFD = 0.1
+
 ## Data Management
 
 - The application uses SQLite for data storage by default
@@ -415,17 +462,21 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    - Fixed import path issues for proper test execution
 
 ### Phase 4: LOPA Implementation
-10. **Independent Protection Layer (IPL) Module**
-    - Create IPL definition and management interface
-    - Implement IPL credit calculations
-    - Develop IPL visualization and documentation tools
+10. **Independent Protection Layer (IPL) Module** ✅ (Completed)
+    - Created IPL class with comprehensive attributes and validation
+    - Implemented IPL credit and Risk Reduction Factor calculations
+    - Developed Safety Integrity Level (SIL) assessment methodology
+    - Created LOPA scenario modeling with conditional modifiers
+    - Implemented mitigated frequency calculations for risk assessment
+    - Built serialization/deserialization capabilities for IPLs and scenarios
+    - Developed comprehensive test suite with 89% code coverage
 
-11. **LOPA Worksheet Implementation**
-    - Build scenario-specific LOPA analysis interface
-    - Implement risk reduction calculations
-    - Create LOPA results visualization
+11. **LOPA Worksheet Implementation** (In Progress)
+    - Building scenario-specific LOPA analysis interface
+    - Implementing risk reduction calculations
+    - Creating LOPA results visualization
 
-12. **SIF Assessment Tools**
+12. **SIF Assessment Tools** (Planned)
     - Implement SIF definition and evaluation
     - Create SIF verification calculations
     - Develop SIF documentation generators
