@@ -77,6 +77,10 @@ def setup_navigation():
     nav_manager.register_page("Chemical Database", render_chemical_database_page, "flask", 2)
     nav_manager.register_page("Equipment Database", render_equipment_database_page, "gear", 3)
     nav_manager.register_page("Scenarios", render_scenarios_page, "exclamation-triangle", 4)
+    
+    # Import the release page function dynamically to avoid circular imports
+    from pages.release import render_release_calculation_page
+    nav_manager.register_page("Release Calculations", render_release_calculation_page, "droplet", 5)
 
 def main():
     """Main application entry point"""
